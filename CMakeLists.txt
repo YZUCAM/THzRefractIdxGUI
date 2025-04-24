@@ -22,6 +22,9 @@ set(IMGUI_INCLUDE_DIR ${IMGUI_DIR} ${IMGUI_DIR}/backends ${IMGUI_DIR}/misc/fonts
 #set IMPLOT related Macro
 set(IMPLOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/implot)
 
+#set IMGUIFILEDIALOG related Macro
+set(IMGUIFILEDIALOG_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imguifd)
+
 
 # debug print message
 message(STATUS "--------------debug info---------------------")
@@ -45,13 +48,15 @@ target_sources(mygui PRIVATE
                ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
                ${IMPLOT_DIR}/implot.cpp
                ${IMPLOT_DIR}/implot_items.cpp
-               ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui_redirect_log.cpp
+               ${IMGUIFILEDIALOG_DIR}/ImGuiFileDialog.cpp
+               ${CMAKE_CURRENT_SOURCE_DIR}/src/data_logger.cpp
+               ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui_filedialog.cpp
                )
 
 
 # mordern way only affect target file
 target_include_directories(mygui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include 
-                           ${IMGUI_INCLUDE_DIR} ${IMPLOT_DIR})
+                           ${IMGUI_INCLUDE_DIR} ${IMPLOT_DIR} ${IMGUIFILEDIALOG_DIR})
 target_link_libraries(mygui PRIVATE glfw OpenGL)
 
 

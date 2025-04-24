@@ -10,7 +10,8 @@
 #include <GLFW/glfw3.h> 
 #include <implot.h>
 #include <cmath>
-#include "imgui_redirect_log.h"
+#include "data_logger.h"
+#include "imgui_filedialog.h"
 
 
 static void glfw_error_callback(int error, const char* description)
@@ -53,23 +54,13 @@ int main(int, char**)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // Load Fonts
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-    // - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-    // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
-    // - Read 'docs/FONTS.md' for more instructions and details.
-    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-    // - Our Emscripten build process allows embedding fonts to be accessible at runtime from the "fonts/" folder. See Makefile.emscripten for details.
-    //io.Fonts->AddFontDefault();
-    //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf", 18.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, nullptr, io.Fonts->GetGlyphRangesJapanese());
-    //IM_ASSERT(font != nullptr);
+    // Setup Datalogger
+    int counter = 0;
+    const size_t maxLines = 50;  // Display the last 50 lines
+    const size_t maxLogSize = 1024 * 5; // Limit log size to 1KB
+    DataLogger logger(maxLogSize);    //log_buffer size 5 kB
 
+    // Load Fonts
     ImFontConfig font_cfg;
     font_cfg.FontDataOwnedByAtlas = false;
     font_cfg.OversampleH = 3;
@@ -78,17 +69,13 @@ int main(int, char**)
     io.Fonts->AddFontFromMemoryTTF(OGCourier_ttf, OGCourier_ttf_len, 18.0f, &font_cfg);
 
     // Our state
-    bool show_demo_window = true;
-    bool show_another_window = false;
+    // bool show_demo_window = true;
+    // bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    // Declare a static instance of ImGuiStreamBuffer for use with std::cout
-    static ImGuiStreamBuffer customStreamBuffer(new char[1024], 1024, 1024 * 5);    //max log size is 5kB
-    static std::ostream customStream(&customStreamBuffer);
-
-    int counter = 0;
-    const size_t maxLines = 50;  // Display the last 50 lines
-    const size_t maxLogSize = 1024 * 1; // Limit log size to 1KB
+    
+    // state flag
+    bool test_diaglog = false;
 
 
     while (!glfwWindowShouldClose(window))
@@ -115,7 +102,7 @@ int main(int, char**)
 
         // first panel in the left
         ImGui::SetNextWindowPos(ImVec2(0,0));
-        ImGui::SetNextWindowSize(ImVec2((int)windowWidth*0.7, (int)windowHeight/3));
+        ImGui::SetNextWindowSize(ImVec2((int)windowWidth*0.35, (int)windowHeight/2));
         ImGui::Begin("Plot1", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);     // Create a window called "Hello, world!" and append into it.
 
         ImVec2 plot1_size = ImGui::GetContentRegionAvail(); 
@@ -135,8 +122,8 @@ int main(int, char**)
         ImGui::End();
 
         // second panel in the left
-        ImGui::SetNextWindowPos(ImVec2(0, (int)windowHeight/3));
-        ImGui::SetNextWindowSize(ImVec2((int)windowWidth*0.7,(int)windowHeight/3));
+        ImGui::SetNextWindowPos(ImVec2((int)windowWidth*0.35, 0));
+        ImGui::SetNextWindowSize(ImVec2((int)windowWidth*0.35,(int)windowHeight/2));
         ImGui::Begin("Plot2", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);                
 
         ImVec2 plot2_size = ImGui::GetContentRegionAvail(); 
@@ -153,11 +140,11 @@ int main(int, char**)
         ImGui::End();
 
         // third panel in the left
-        ImGui::SetNextWindowPos(ImVec2(0, 2 * (int)windowHeight/3));
-        ImGui::SetNextWindowSize(ImVec2((int)windowWidth*0.7,(int)windowHeight/3));
+        ImGui::SetNextWindowPos(ImVec2(0, (int)windowHeight/2));
+        ImGui::SetNextWindowSize(ImVec2((int)windowWidth*0.35,(int)windowHeight/2));
         ImGui::Begin("Plot3", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);                
         ImVec2 plot3_size = ImGui::GetContentRegionAvail(); 
-        if (ImPlot::BeginPlot("Optimization Error", plot3_size)) 
+        if (ImPlot::BeginPlot("Complex Redractive Index", plot3_size)) 
         {
             static float xs[100], ys[100];
             for (int i = 0; i < 100; ++i) {
@@ -167,14 +154,24 @@ int main(int, char**)
             ImPlot::PlotLine("Cosine", xs, ys, 100);
             ImPlot::EndPlot();
         }         
-        // ImGui::Checkbox("Demo Window", &show_demo_window);      
-        // ImGui::Checkbox("Another Window", &show_another_window);
 
-        // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        ImGui::End();
 
-
-        // ImGui::SetCursorPos(ImVec2(windowWidth-30, 0));
-        // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        // fourth panel in the left
+        ImGui::SetNextWindowPos(ImVec2((int)windowWidth*0.35, (int)windowHeight/2));
+        ImGui::SetNextWindowSize(ImVec2((int)windowWidth*0.35,(int)windowHeight/2));
+        ImGui::Begin("Plot4", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);                
+        ImVec2 plot4_size = ImGui::GetContentRegionAvail(); 
+        if (ImPlot::BeginPlot("Optimization Error", plot4_size)) 
+        {
+            static float xs[100], ys[100];
+            for (int i = 0; i < 100; ++i) {
+                xs[i] = i * 0.1f;
+                ys[i] = cos(xs[i]);
+            }
+            ImPlot::PlotLine("Cosine", xs, ys, 100);
+            ImPlot::EndPlot();
+        }         
 
         ImGui::End();
 
@@ -185,37 +182,57 @@ int main(int, char**)
         
         ImVec2 right_window_size = ImGui::GetWindowSize();
         
-        std::cout.rdbuf(customStream.rdbuf());
-        // Simulate program output
-        std::cout << "Output power is 5mW with 100 percent test: " << counter << std::endl;
-        counter++;
+
+        // select file
+        if (ImGui::Button("Open File Dialog")) 
+        {
+            IGFD::FileDialogConfig config;
+            config.path = ".";
+            // ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".csv,.txt", config);
+
+            std::cout << "Test log output." << std::endl;
+            logger.Log(DataLogger::INFO, "Test log output.");
+        }
+        // drawFileDialogGui();
+
+        ImGui::Checkbox("Enable Feature", &test_diaglog);
+        if (test_diaglog)
+        {
+            // Simulate program output
+            std::cout << "Output power is 5mW with 100 percent test: " << counter << std::endl;
+            std::string message = "Output power is 5mW with 100 percent test: " + std::to_string(counter);
+            logger.Log(DataLogger::INFO, message);
+
+            counter++;
+        }
 
 
+        ImGui::SetCursorPos(ImVec2(280, right_window_size.y - 255));
+        if (ImGui::Button("Clear Log")) 
+        {
+            logger.ClearLog();
+        }
 
 
-        // Scroll to the bottom of the log by default
+        // program log output section
         ImGui::SetCursorPos(ImVec2(10, right_window_size.y - 250));
         ImGui::Text("Program log output:");
         ImGui::SetCursorPos(ImVec2(10, right_window_size.y - 230));
         // Display the log buffer content in a scrollable text area
         ImGui::BeginChild("LogArea", ImVec2(right_window_size.x-10, 190), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 
-        // size_t linesShown = 0;
-        // auto logBuffer = customStreamBuffer.GetLog();
-        // size_t pos = logBuffer.find_last_of('\n', logBuffer.size() - 1);
-        // while (pos != std::string::npos && linesShown < maxLines) {
-        //     // Find the previous newline and display it
-        //     size_t nextPos = logBuffer.find_last_of('\n', pos - 1);
-        //     ImGui::TextWrapped(logBuffer.substr(nextPos + 1, pos - nextPos).c_str());
-        //     pos = nextPos;
-        //     linesShown++;
-        // }
-        auto logBuffer = customStreamBuffer.GetLog();
-        if (logBuffer.size() > maxLogSize) 
+        
+        auto logBuffer = logger.GetLogBuffer();
+     
+        // ImGui::TextWrapped(logBuffer.c_str());
+
+        for (const auto& logEntry : logBuffer) 
         {
-            logBuffer = logBuffer.substr(logBuffer.size() - maxLogSize); // Keep only the last 1KB of logs
+            ImGui::TextWrapped("%s", logEntry.c_str());
         }
-        ImGui::TextWrapped(logBuffer.c_str());
+
+        ImGui::SetScrollHereY(1.0f);
+        
 
         // ImGui::TextWrapped(customStreamBuffer.GetLog().c_str());
         ImGui::EndChild();
@@ -230,7 +247,7 @@ int main(int, char**)
         ImGui::SetCursorPos(ImVec2(10, right_window_size.y - 28));
         ImGui::Text("App FPS: %.1f", io.Framerate);
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 200, right_window_size.y - 28));
-        ImGui::Text("By Dr. Yi  V: 0.1.0");
+        ImGui::Text("By Dr. Yi  V: 0.1.1");
 
         ImGui::End();
 
