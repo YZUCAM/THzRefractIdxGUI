@@ -2,3 +2,19 @@
 #include "data_logger.h"
 
 extern DataLogger logger;
+
+// under 1280 x 720 main window size, the each widget size define here:
+#define RIGHT_WINDOW_SIZE ImVec2(384, 720)
+#define TEXT_SIZE ImVec2(220, 18)
+#define BUTTON_SIZE ImVec2(118, 24)
+#define RADIO_SIZE ImVec2(88, 24)
+#define CIRCLE_INDICATOR_SIZE ImVec2(30, 18)
+#define INPUT_SIZE ImVec2(100, 24)
+
+// button color
+// #define BUTTONCOLOR_DARK_STYLE ImVec4(0.26, 0.59, 0.98, 0.4)
+// #define BUTTONHOVERCOLOR_DARK_STYLE ImVec4(0.26, 0.59, 0.98, 0.4)   // RGB 0.26*255 = 66.3, 150.45, 249.9 
+
+
+
+
