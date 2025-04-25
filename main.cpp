@@ -12,6 +12,15 @@
 #include <cmath>
 #include "data_logger.h"
 #include "imgui_filedialog.h"
+#include "global_logger.h"
+
+
+// Setup Datalogger
+int counter = 0;
+const size_t maxLines = 50;  // Display the last 50 lines
+const size_t maxLogSize = 50; // Limit log size to 50 Byte
+// define global variables
+DataLogger logger(maxLogSize);    //log_buffer size 
 
 
 static void glfw_error_callback(int error, const char* description)
@@ -54,11 +63,7 @@ int main(int, char**)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // Setup Datalogger
-    int counter = 0;
-    const size_t maxLines = 50;  // Display the last 50 lines
-    const size_t maxLogSize = 1024 * 5; // Limit log size to 1KB
-    DataLogger logger(maxLogSize);    //log_buffer size 5 kB
+    
 
     // Load Fonts
     ImFontConfig font_cfg;
@@ -76,6 +81,14 @@ int main(int, char**)
     
     // state flag
     bool test_diaglog = false;
+
+    // state variable
+    int mode = 0;
+
+    char thick_from[128] = "";
+    char thick_to[128] = "";
+    char thick_step[128] = "";
+    std::string point = "25";
 
 
     while (!glfwWindowShouldClose(window))
@@ -183,31 +196,81 @@ int main(int, char**)
         ImVec2 right_window_size = ImGui::GetWindowSize();
         
 
+        // // mode image
+        // ImGui::Image();
+
+        // TODO
+
+
         // select file
-        if (ImGui::Button("Open File Dialog")) 
+        ImGui::SetCursorPos(ImVec2(right_window_size.x - 125, right_window_size.y - 690));
+        if (ImGui::Button(" Open File ")) 
         {
             IGFD::FileDialogConfig config;
             config.path = ".";
-            // ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".csv,.txt", config);
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".csv,.txt", config);
 
             std::cout << "Test log output." << std::endl;
             logger.Log(DataLogger::INFO, "Test log output.");
+            
         }
-        // drawFileDialogGui();
+        drawFileDialogGui();
 
-        ImGui::Checkbox("Enable Feature", &test_diaglog);
-        if (test_diaglog)
+        //indicator
+        ImGui::SetCursorPos(ImVec2(right_window_size.x - 125, right_window_size.y - 660));
+        ImGui::BeginGroup();
+        CircleIndicator(true, "Ref");
+        ImGui::SameLine();
+        CircleIndicator(false, "Sam");
+
+        // mode selection
+        ImGui::Text(" Model");
+        ImGui::RadioButton("Mode 1", mode == 0); if (ImGui::IsItemClicked()) mode = 0;
+        ImGui::RadioButton("Mode 2", mode == 1); if (ImGui::IsItemClicked()) mode = 1;
+        // save button
+        if (ImGui::Button(" Save Data "))
         {
-            // Simulate program output
-            std::cout << "Output power is 5mW with 100 percent test: " << counter << std::endl;
-            std::string message = "Output power is 5mW with 100 percent test: " + std::to_string(counter);
-            logger.Log(DataLogger::INFO, message);
+            //save data
+        }
 
-            counter++;
+        ImGui::EndGroup();
+
+        ImGui::Text("Thickness Optimization");
+
+        
+
+        // ImGui::Checkbox("Check window size", &test_diaglog);
+        
+
+        ImGui::SetNextItemWidth(100); 
+        ImGui::InputTextWithHint("##t1", "From", thick_from, IM_ARRAYSIZE(thick_from));
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(100); 
+        ImGui::InputTextWithHint("##t2", "To", thick_to, IM_ARRAYSIZE(thick_to));
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(100); 
+        ImGui::InputTextWithHint("##t3", "Step", thick_step, IM_ARRAYSIZE(thick_step));
+        ImGui::SameLine();
+        ImGui::Text(point.c_str());
+
+
+
+
+
+
+
+
+
+
+
+        if (ImGui::Button("Check Window"))
+        {
+            std::string message = std::to_string(right_window_size.x) + "," + std::to_string(right_window_size.y);
+            logger.Log(DataLogger::INFO, message);
         }
 
 
-        ImGui::SetCursorPos(ImVec2(280, right_window_size.y - 255));
+        ImGui::SetCursorPos(ImVec2(right_window_size.x - 104, right_window_size.y - 255));
         if (ImGui::Button("Clear Log")) 
         {
             logger.ClearLog();
