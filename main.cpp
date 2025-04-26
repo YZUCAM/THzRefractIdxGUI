@@ -29,6 +29,8 @@ bool sam_selected = false;
 bool sam_delay_selected = false;
 bool first_load_plot = false;
 
+std::string selected_file_type = "";
+
 
 
 static void glfw_error_callback(int error, const char* description)
@@ -96,6 +98,7 @@ int main(int, char**)
 
     // state variable
     int mode = 0;
+    int TimeFreqSelect = 0;
 
     char thick_from[128] = "";
     char thick_to[128] = "";
@@ -138,12 +141,34 @@ int main(int, char**)
         ImGui::Begin("Plot1", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);     // Create a window called "Hello, world!" and append into it.
         ImVec2 plot1_size = ImGui::GetContentRegionAvail(); 
         if (first_load_plot){ImPlot::SetNextAxesToFit();}
-        if (ImPlot::BeginPlot("Time Domain THz Spectrum", plot1_size)) 
+
+        if (TimeFreqSelect == 0)
         {
-            ImPlot::SetupAxes("Time (s)","E (a.u.)");
-            ImPlot::PlotLine("Ref", spectrum_container["ref"].times.data(), spectrum_container["ref"].Tm.data(), spectrum_container["ref"].Tm.size());
-            ImPlot::EndPlot();
-        }    
+            if (ImPlot::BeginPlot("Time Domain THz Spectrum", plot1_size)) 
+            {
+                ImPlot::SetupAxes("Time (s)","E (a.u.)");
+                ImPlot::SetupLegend(ImPlotLocation_NorthEast);
+                ImPlot::PlotLine("Ref", spectrum_container["ref"].times.data(), spectrum_container["ref"].Tm.data(), spectrum_container["ref"].Tm.size());
+                // if (!spectrum_container["ref"].times.empty()){}
+                ImPlot::PlotLine("Sam", spectrum_container["sam"].times.data(), spectrum_container["sam"].Tm.data(), spectrum_container["sam"].Tm.size());
+                ImPlot::EndPlot();
+            }    
+    
+        }
+        else if (TimeFreqSelect == 1)
+        {
+            if (ImPlot::BeginPlot("Frequency Domain THz Spectrum", plot1_size)) 
+            {
+                ImPlot::SetupAxes("Frequency (THz)","E (a.u.)");
+                ImPlot::SetupLegend(ImPlotLocation_NorthEast);
+                ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+                ImPlot::PlotLine("Ref", spectrum_container["ref"].freqsTHz.data(), spectrum_container["ref"].fty_abs.data(), spectrum_container["ref"].fty_abs.size());
+                ImPlot::PlotLine("Sam", spectrum_container["sam"].freqsTHz.data(), spectrum_container["sam"].fty_abs.data(), spectrum_container["sam"].fty_abs.size());
+                ImPlot::EndPlot();
+            }    
+    
+        }
+        
         // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
         ImGui::End();
 
@@ -153,11 +178,13 @@ int main(int, char**)
         ImGui::Begin("Plot2", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);                
         ImVec2 plot2_size = ImGui::GetContentRegionAvail(); 
         if (first_load_plot){ImPlot::SetNextAxesToFit();}
-        if (ImPlot::BeginPlot("Frequency Domain THz Spectrum", plot2_size)) 
+        if (ImPlot::BeginPlot("Complex Tranmission", plot2_size)) 
         {
             ImPlot::SetupAxes("Frequency (THz)","E (a.u.)");
+            ImPlot::SetupLegend(ImPlotLocation_NorthEast);
             ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
-            ImPlot::PlotLine("Ref", spectrum_container["ref"].freqsTHz.data(), spectrum_container["ref"].fty_abs.data(), spectrum_container["ref"].fty_abs.size());
+            ImPlot::PlotLine("Tm1", spectrum_container["ref"].freqsTHz.data(), Tm1_abs.data(), Tm1_abs.size());
+            ImPlot::PlotLine("Tm2", spectrum_container["ref"].freqsTHz.data(), Tm2_abs.data(), Tm2_abs.size());
             ImPlot::EndPlot();
         }    
         ImGui::End();
@@ -168,13 +195,14 @@ int main(int, char**)
         ImGui::Begin("Plot3", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);                
         ImVec2 plot3_size = ImGui::GetContentRegionAvail(); 
         if (first_load_plot){ImPlot::SetNextAxesToFit();}
-        if (ImPlot::BeginPlot("Complex Redractive Index", plot3_size)) 
+        if (ImPlot::BeginPlot("Complex Refractive Index", plot3_size)) 
         {
             static float xs[100], ys[100];
             for (int i = 0; i < 100; ++i) {
                 xs[i] = i * 0.1f;
                 ys[i] = cos(xs[i]);
             }
+            ImPlot::SetupLegend(ImPlotLocation_NorthEast);
             ImPlot::PlotLine("Cosine", xs, ys, 100);
             ImPlot::EndPlot();
         }         
@@ -194,6 +222,7 @@ int main(int, char**)
                 xs[i] = i * 0.1f;
                 ys[i] = cos(xs[i]);
             }
+            ImPlot::SetupLegend(ImPlotLocation_NorthEast);
             ImPlot::PlotLine("Cosine", xs, ys, 100);
             ImPlot::EndPlot();
         }         
@@ -220,12 +249,36 @@ int main(int, char**)
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 125, 30));
         if (ImGui::Button(" Open File ")) 
         {
+            // add selection prompt
+            ImGui::OpenPopup("Select File Type");
+            
             IGFD::FileDialogConfig config;
             config.path = ".";
-            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".csv,.txt", config);
-
-            // logger.Log(DataLogger::INFO, "Test log output.");            
+            ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".csv,.txt", config);           
         }
+        if (ImGui::BeginPopupModal("Select File Type", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) 
+            {
+                ImGui::Text("Please select an spectrum type: ");
+                if (ImGui::Button("Reference")) 
+                {
+                    selected_file_type =  "ref"; 
+                    ImGui::CloseCurrentPopup();  // Close modal after selection
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Sample")) 
+                {
+                    selected_file_type =  "sam"; 
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Sample + Delay")) 
+                {
+                    selected_file_type =  "sam_delay"; 
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::EndPopup();
+            }
+     
         // DEVELOP WILL BE REMOVED LATER
         ImVec2 button_size_default = ImGui::GetItemRectSize();
         drawFileDialogGui();
@@ -247,6 +300,7 @@ int main(int, char**)
         if (ImGui::Button(" Save Data "))
         {
             //save data
+
         }
         ImGui::EndGroup();
 
@@ -304,6 +358,12 @@ int main(int, char**)
         ImGui::Separator(); 
         ImGui::ProgressBar(progress, ImVec2(400,20), (std::to_string((int)(progress*100)) + "%").c_str());
         
+        // display switch
+        ImGui::RadioButton("Time Domain", TimeFreqSelect == 0); if (ImGui::IsItemClicked()) {TimeFreqSelect = 0; first_load_plot = true;}
+        ImGui::SameLine();
+        ImGui::RadioButton("Freq Domain", TimeFreqSelect == 1); if (ImGui::IsItemClicked()) {TimeFreqSelect = 1; first_load_plot = true;}
+
+
         // DataLogger Section
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 105, right_window_size.y - (int)(right_window_size.y * 190 / 720) - 61));  // y offset 26
         if (ImGui::Button("Clear Log")) 

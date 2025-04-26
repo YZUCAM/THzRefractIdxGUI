@@ -59,6 +59,7 @@ target_sources(mygui PRIVATE
                ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui_filedialog.cpp
                ${CMAKE_CURRENT_SOURCE_DIR}/src/load.cpp
                ${CMAKE_CURRENT_SOURCE_DIR}/src/fft.cpp
+               ${CMAKE_CURRENT_SOURCE_DIR}/src/core_functions.cpp
                )
 
 

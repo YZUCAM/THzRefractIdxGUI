@@ -25,7 +25,7 @@ void DataLogger::Log(LogLevel level, const std::string& message)
     logStream << message << std::endl;
 
     // debug
-    std::cout << "[DEBUG] Log called with: " << message << std::endl;
+    // std::cout << "[DEBUG] Log called with: " << message << std::endl;
     // Update in-memory log buffer
     logBuffer_.push_back(logStream.str());
 

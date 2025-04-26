@@ -4,13 +4,14 @@
 #include "global_logger.h"
 
 
-// std::vector<double> freqsTHz;
-// std::vector<double> fty_abs;
-
 std::unordered_map<std::string, spectrum_dataset> spectrum_container;
 spectrum_dataset ref_spectrum;
 spectrum_dataset sam_spectrum;
 spectrum_dataset sam_delay_spectrum;
+torch::Tensor Tm1;
+torch::Tensor Tm2;
+std::vector<double> Tm1_abs;
+std::vector<double> Tm2_abs;
 
 
 void drawFileDialogGui() 
@@ -26,21 +27,64 @@ void drawFileDialogGui()
             // action
 
             // Use the selected file
-            std::cout << "Selected file: " << filePathName.c_str() << std::endl;
+            // std::cout << "Selected file: " << filePathName.c_str() << std::endl;
             std::string message = "Selected file: " + filePathName;
             logger.Log(DataLogger::INFO, message);
 
             // pass it to global file variable to invoke backend function
-            load_spectrum(filePathName, ref_spectrum);
-            spectrum_container["ref"] = std::move(ref_spectrum);
-            ref_selected = true;
+            // NEED A PROMPT TO TELL WHAT NEED TO BE LOAD
+            if (selected_file_type == "ref")
+            {
+                load_spectrum(filePathName, ref_spectrum);
+                spectrum_container["ref"] = std::move(ref_spectrum);
+                ref_selected = true;
+                message = "Load reference success.";
+                logger.Log(DataLogger::INFO, message);
+            } 
+            else if (selected_file_type == "sam")
+            {
+                load_spectrum(filePathName, sam_spectrum);
+                spectrum_container["sam"] = std::move(sam_spectrum);
+                sam_selected = true;
+                message = "Load sample success.";
+                logger.Log(DataLogger::INFO, message);
+            }
+            else if (selected_file_type == "sam_delay")
+            {
+                load_spectrum(filePathName, sam_delay_spectrum);
+                spectrum_container["sam_delay"] = std::move(sam_delay_spectrum);
+                sam_delay_selected = true;
+                message = "Load sample + delay success.";
+                logger.Log(DataLogger::INFO, message);
+            }
+            else
+            {
+                message = "Invalid spectrum type, please retry.";
+                logger.Log(DataLogger::ERROR, message);
+                ImGuiFileDialog::Instance()->Close();
+            }
             first_load_plot = true;
+
+            // check if container has ref and sam and sam_delay
+            if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sam"].Tm.empty())) 
+            {
+                Tm1 = get_complex_transmission(spectrum_container["sam"], spectrum_container["ref"]);
+                // std::cout << "Tm1 calculated: " << Tm1[1] << std::endl;
+                auto abs_Tm1 = torch::abs(Tm1).to(torch::kDouble);
+                Tm1_abs.resize(abs_Tm1.size(0));
+                std::memcpy(Tm1_abs.data(), abs_Tm1.data_ptr<double>(), abs_Tm1.numel() * sizeof(double));
+            }
+
+            if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sam_delay"].Tm.empty())) 
+            {
+                Tm2 = get_complex_transmission(spectrum_container["sam_delay"], spectrum_container["ref"]);
+                // std::cout << "Tm2 calculated: " << Tm2[1] << std::endl;
+                auto abs_Tm2 = torch::abs(Tm2).to(torch::kDouble);
+                Tm2_abs.resize(abs_Tm2.size(0));
+                std::memcpy(Tm2_abs.data(), abs_Tm2.data_ptr<double>(), abs_Tm2.numel() * sizeof(double));
+            }
+
         }
-
-        // std::cout << "FreqsTHz size: " << spectrum_container["ref"].freqsTHz.size() << std::endl;
-        // std::cout << "fty_abs size: " << spectrum_container["ref"].fty_abs.size() << std::endl;
-    
-
         // close
         ImGuiFileDialog::Instance()->Close();
     }

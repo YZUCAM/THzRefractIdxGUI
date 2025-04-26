@@ -11,10 +11,18 @@ extern bool ref_selected;
 extern bool sam_selected;
 extern bool sam_delay_selected;
 extern bool first_load_plot;
+extern std::string selected_file_type;
 
 extern std::unordered_map<std::string, spectrum_dataset> spectrum_container;
 extern spectrum_dataset ref_spectrum;
+extern spectrum_dataset sam_spectrum;
+extern spectrum_dataset sam_delay_spectrum;
 
+// processed data
+extern torch::Tensor Tm1;
+extern torch::Tensor Tm2;
+extern std::vector<double> Tm1_abs;
+extern std::vector<double> Tm2_abs;
 
 
 
