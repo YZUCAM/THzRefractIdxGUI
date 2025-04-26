@@ -1,7 +1,22 @@
+// store all global variables
+
 #pragma once
 #include "data_logger.h"
+#include <load.h>
+// #include <fft.h>
 
 extern DataLogger logger;
+
+extern bool ref_selected;
+extern bool sam_selected;
+extern bool sam_delay_selected;
+extern bool first_load_plot;
+
+extern std::unordered_map<std::string, spectrum_dataset> spectrum_container;
+extern spectrum_dataset ref_spectrum;
+
+
+
 
 // under 1280 x 720 main window size, the each widget size define here:
 #define RIGHT_WINDOW_SIZE ImVec2(384, 720)

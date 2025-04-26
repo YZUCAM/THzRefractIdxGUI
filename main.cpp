@@ -12,14 +12,23 @@
 #include <cmath>
 #include "data_logger.h"
 #include "imgui_filedialog.h"
-#include "global_logger.h"
+#include "global_logger.h"      // ---> store all global variables
 
-
+// define global variables
 // Setup Datalogger
 const size_t maxLines = 50;  // Display the last 50 lines
 const size_t maxLogSize = 50; // Limit log size to 50 Byte
-// define global variables
 DataLogger logger(maxLogSize);    //log_buffer size 
+
+// variables for backend THz calculation
+std::vector<double> pos;
+int skip_row = 0;
+
+bool ref_selected = false;
+bool sam_selected = false;
+bool sam_delay_selected = false;
+bool first_load_plot = false;
+
 
 
 static void glfw_error_callback(int error, const char* description)
@@ -82,6 +91,7 @@ int main(int, char**)
     ImVec4 hoveredColor = ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered];
     
     // state flag
+    
 
 
     // state variable
@@ -97,6 +107,9 @@ int main(int, char**)
     float progress = 0.99;
 
 
+
+
+    // main program UI loop
     while (!glfwWindowShouldClose(window))
     {
         // Poll and handle events (inputs, window resize, etc.)
@@ -124,14 +137,11 @@ int main(int, char**)
         ImGui::SetNextWindowSize(ImVec2((int)((windowWidth - right_window_width)/2), (int)windowHeight/2));
         ImGui::Begin("Plot1", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);     // Create a window called "Hello, world!" and append into it.
         ImVec2 plot1_size = ImGui::GetContentRegionAvail(); 
+        if (first_load_plot){ImPlot::SetNextAxesToFit();}
         if (ImPlot::BeginPlot("Time Domain THz Spectrum", plot1_size)) 
         {
-            static float xs[100], ys[100];
-            for (int i = 0; i < 100; ++i) {
-                xs[i] = i * 0.1f;
-                ys[i] = tan(xs[i]);
-            }
-            ImPlot::PlotLine("Cosine", xs, ys, 100);
+            ImPlot::SetupAxes("Time (s)","E (a.u.)");
+            ImPlot::PlotLine("Ref", spectrum_container["ref"].times.data(), spectrum_container["ref"].Tm.data(), spectrum_container["ref"].Tm.size());
             ImPlot::EndPlot();
         }    
         // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
@@ -142,14 +152,12 @@ int main(int, char**)
         ImGui::SetNextWindowSize(ImVec2((int)(windowWidth - right_window_width)/2,(int)windowHeight/2));
         ImGui::Begin("Plot2", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);                
         ImVec2 plot2_size = ImGui::GetContentRegionAvail(); 
+        if (first_load_plot){ImPlot::SetNextAxesToFit();}
         if (ImPlot::BeginPlot("Frequency Domain THz Spectrum", plot2_size)) 
         {
-            static float xs[100], ys[100];
-            for (int i = 0; i < 100; ++i) {
-                xs[i] = i * 0.1f;
-                ys[i] = sin(xs[i]);
-            }
-            ImPlot::PlotLine("Cosine", xs, ys, 100);
+            ImPlot::SetupAxes("Frequency (THz)","E (a.u.)");
+            ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+            ImPlot::PlotLine("Ref", spectrum_container["ref"].freqsTHz.data(), spectrum_container["ref"].fty_abs.data(), spectrum_container["ref"].fty_abs.size());
             ImPlot::EndPlot();
         }    
         ImGui::End();
@@ -159,6 +167,7 @@ int main(int, char**)
         ImGui::SetNextWindowSize(ImVec2((int)(windowWidth - right_window_width)/2,(int)windowHeight/2));
         ImGui::Begin("Plot3", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);                
         ImVec2 plot3_size = ImGui::GetContentRegionAvail(); 
+        if (first_load_plot){ImPlot::SetNextAxesToFit();}
         if (ImPlot::BeginPlot("Complex Redractive Index", plot3_size)) 
         {
             static float xs[100], ys[100];
@@ -177,6 +186,7 @@ int main(int, char**)
         ImGui::SetNextWindowSize(ImVec2((int)(windowWidth - right_window_width)/2,(int)windowHeight/2));
         ImGui::Begin("Plot4", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);                
         ImVec2 plot4_size = ImGui::GetContentRegionAvail(); 
+        if (first_load_plot){ImPlot::SetNextAxesToFit();}
         if (ImPlot::BeginPlot("Optimization Error", plot4_size)) 
         {
             static float xs[100], ys[100];
@@ -189,6 +199,7 @@ int main(int, char**)
         }         
 
         ImGui::End();
+        first_load_plot = false;
 
         // Right Pannel
         ImGui::SetNextWindowPos(ImVec2((int)(windowWidth - right_window_width), 0));
@@ -213,9 +224,7 @@ int main(int, char**)
             config.path = ".";
             ImGuiFileDialog::Instance()->OpenDialog("ChooseFileDlgKey", "Choose File", ".csv,.txt", config);
 
-            std::cout << "Test log output." << std::endl;
-            logger.Log(DataLogger::INFO, "Test log output.");
-            
+            // logger.Log(DataLogger::INFO, "Test log output.");            
         }
         // DEVELOP WILL BE REMOVED LATER
         ImVec2 button_size_default = ImGui::GetItemRectSize();
@@ -223,10 +232,10 @@ int main(int, char**)
         //indicator
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 125, 60));
         ImGui::BeginGroup();
-        CircleIndicator(true, "Ref");
+        CircleIndicator(ref_selected, "Ref");
         ImGui::SameLine();
-        CircleIndicator(false, "Sam");
-        CircleIndicator(false, "Sam+Delay");
+        CircleIndicator(sam_selected, "Sam");
+        CircleIndicator(sam_delay_selected, "Sam+Delay");
         ImVec2 circle_indicator_size_default = ImGui::GetItemRectSize();
 
         // Mode Selection Section

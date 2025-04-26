@@ -6,6 +6,8 @@
 #include <iostream>
 #include <string>
 #include "data_logger.h"
+#include "global_logger.h"
+
 
 
 

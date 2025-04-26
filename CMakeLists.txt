@@ -8,12 +8,18 @@ set(CMAKE_CXX_STANDARD 17)
 #CMAKE_PREFIX_PATH is cmake used to find libraries
 set(CMAKE_PREFIX_PATH "/home/z/zhuy/Develop/libtorch" ${CMAKE_PREFIX_PATH})
 
+# tell CMAKE to find fast-cpp-csv-parser path.
+include_directories($ENV{VCPKG_ROOT}/installed/x64-linux/include/fast-cpp-csv-parser)
 
 
 #find_package
 find_package(OpenGL REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GLFW REQUIRED glfw3)
+find_package(Torch REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
+
+
 
 # set IMGUI related Macro
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/imgui)
@@ -51,13 +57,15 @@ target_sources(mygui PRIVATE
                ${IMGUIFILEDIALOG_DIR}/ImGuiFileDialog.cpp
                ${CMAKE_CURRENT_SOURCE_DIR}/src/data_logger.cpp
                ${CMAKE_CURRENT_SOURCE_DIR}/src/imgui_filedialog.cpp
+               ${CMAKE_CURRENT_SOURCE_DIR}/src/load.cpp
+               ${CMAKE_CURRENT_SOURCE_DIR}/src/fft.cpp
                )
 
 
 # mordern way only affect target file
 target_include_directories(mygui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include 
                            ${IMGUI_INCLUDE_DIR} ${IMPLOT_DIR} ${IMGUIFILEDIALOG_DIR})
-target_link_libraries(mygui PRIVATE glfw OpenGL)
+target_link_libraries(mygui PRIVATE glfw OpenGL "${TORCH_LIBRARIES}")
 
 
 # debug print message
