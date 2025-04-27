@@ -8,3 +8,6 @@
 
 torch::Tensor construct_w(const spectrum_dataset& spectrum);
 torch::Tensor get_complex_transmission(const spectrum_dataset& s1, const spectrum_dataset& r1);
+
+void set_ROI_dataset(complex_transmission_dataset& source, roi_dataset& df, std::string from, std::string to, std::vector<double> freqsTHz);
+

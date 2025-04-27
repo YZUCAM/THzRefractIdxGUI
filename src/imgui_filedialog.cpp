@@ -8,10 +8,10 @@ std::unordered_map<std::string, spectrum_dataset> spectrum_container;
 spectrum_dataset ref_spectrum;
 spectrum_dataset sam_spectrum;
 spectrum_dataset sam_delay_spectrum;
-torch::Tensor Tm1;
-torch::Tensor Tm2;
-std::vector<double> Tm1_abs;
-std::vector<double> Tm2_abs;
+
+complex_transmission_dataset c_t_dataset;
+
+
 
 
 void drawFileDialogGui() 
@@ -68,20 +68,20 @@ void drawFileDialogGui()
             // check if container has ref and sam and sam_delay
             if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sam"].Tm.empty())) 
             {
-                Tm1 = get_complex_transmission(spectrum_container["sam"], spectrum_container["ref"]);
+                c_t_dataset.Tm1 = get_complex_transmission(spectrum_container["sam"], spectrum_container["ref"]);
                 // std::cout << "Tm1 calculated: " << Tm1[1] << std::endl;
-                auto abs_Tm1 = torch::abs(Tm1).to(torch::kDouble);
-                Tm1_abs.resize(abs_Tm1.size(0));
-                std::memcpy(Tm1_abs.data(), abs_Tm1.data_ptr<double>(), abs_Tm1.numel() * sizeof(double));
+                auto abs_Tm1 = torch::abs(c_t_dataset.Tm1).to(torch::kDouble);
+                c_t_dataset.Tm1_abs.resize(abs_Tm1.size(0));
+                std::memcpy(c_t_dataset.Tm1_abs.data(), abs_Tm1.data_ptr<double>(), abs_Tm1.numel() * sizeof(double));
             }
 
             if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sam_delay"].Tm.empty())) 
             {
-                Tm2 = get_complex_transmission(spectrum_container["sam_delay"], spectrum_container["ref"]);
+                c_t_dataset.Tm2 = get_complex_transmission(spectrum_container["sam_delay"], spectrum_container["ref"]);
                 // std::cout << "Tm2 calculated: " << Tm2[1] << std::endl;
-                auto abs_Tm2 = torch::abs(Tm2).to(torch::kDouble);
-                Tm2_abs.resize(abs_Tm2.size(0));
-                std::memcpy(Tm2_abs.data(), abs_Tm2.data_ptr<double>(), abs_Tm2.numel() * sizeof(double));
+                auto abs_Tm2 = torch::abs(c_t_dataset.Tm2).to(torch::kDouble);
+                c_t_dataset.Tm2_abs.resize(abs_Tm2.size(0));
+                std::memcpy(c_t_dataset.Tm2_abs.data(), abs_Tm2.data_ptr<double>(), abs_Tm2.numel() * sizeof(double));
             }
 
         }
@@ -89,7 +89,6 @@ void drawFileDialogGui()
         ImGuiFileDialog::Instance()->Close();
     }
 }
-
 
 
 void CircleIndicator(bool status, const char* label) 

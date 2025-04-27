@@ -28,6 +28,7 @@ bool ref_selected = false;
 bool sam_selected = false;
 bool sam_delay_selected = false;
 bool first_load_plot = false;
+bool roi_selector = false;
 
 std::string selected_file_type = "";
 
@@ -49,8 +50,8 @@ int main(int, char**)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-    // Create window with graphics context
-    GLFWwindow* window = glfwCreateWindow(1280, 720, "Complex Refractive Index Extractor", nullptr, nullptr);
+    // Create window with graphics context (1280 * 720)
+    GLFWwindow* window = glfwCreateWindow(1920, 1080, "Complex Refractive Index Extractor", nullptr, nullptr);
     if (window == nullptr)
         return 1;
     glfwSetWindowAspectRatio(window, 16, 9);
@@ -103,11 +104,13 @@ int main(int, char**)
     char thick_from[128] = "";
     char thick_to[128] = "";
     char thick_step[128] = "";
+    char ROI_from[128] = "";
+    char ROI_to[128] = "";
     char learning_rate[128] = "";
     char iteration_num[128] = "";
     std::string point = "25";
     std::string OptThickness = "0";
-    float progress = 0.99;
+    float progress = 0.80;
 
 
 
@@ -183,8 +186,17 @@ int main(int, char**)
             ImPlot::SetupAxes("Frequency (THz)","E (a.u.)");
             ImPlot::SetupLegend(ImPlotLocation_NorthEast);
             ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
-            ImPlot::PlotLine("Tm1", spectrum_container["ref"].freqsTHz.data(), Tm1_abs.data(), Tm1_abs.size());
-            ImPlot::PlotLine("Tm2", spectrum_container["ref"].freqsTHz.data(), Tm2_abs.data(), Tm2_abs.size());
+            if (roi_selector)
+            {
+                // BUG! exist automaticaly!!!
+                ImPlot::PlotLine("Tm1", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm1_abs.data(), ROI_data.roi_Tm1_abs.size());
+                ImPlot::PlotLine("Tm2", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm2_abs.data(), ROI_data.roi_Tm2_abs.size());
+            }
+            else
+            {
+                ImPlot::PlotLine("Tm1", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm1_abs.data(), c_t_dataset.Tm1_abs.size());
+                ImPlot::PlotLine("Tm2", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm2_abs.data(), c_t_dataset.Tm2_abs.size());
+            }
             ImPlot::EndPlot();
         }    
         ImGui::End();
@@ -336,13 +348,41 @@ int main(int, char**)
         // Extract Refractive Idx Section
         ImGui::Separator();
         ImGui::Text("Extract Complex Refractive Index");
+        // Select region of interest
+        ImGui::Text("Select region of interest: ");
+        ImGui::BeginGroup();
+        ImGui::SetNextItemWidth(100); 
+        ImGui::InputTextWithHint("##t4", "ROI from", ROI_from, IM_ARRAYSIZE(ROI_from));
+        ImGui::SetNextItemWidth(100); 
+        ImGui::SameLine();
+        ImGui::InputTextWithHint("##t5", "ROI to", ROI_to, IM_ARRAYSIZE(ROI_to));
+        ImGui::EndGroup();
+        ImGui::SameLine();
+        if (ImGui::Button(" Set "))
+        {
+            // reset ROI region
+            logger.Log(DataLogger::INFO, "Get ROI struct info");
+            logger.Log(DataLogger::INFO, std::string(ROI_from));
+            logger.Log(DataLogger::INFO, std::string(ROI_to));
+            set_ROI_dataset(c_t_dataset, ROI_data, std::string(ROI_from), std::string(ROI_to), spectrum_container["ref"].freqsTHz);
+            roi_selector = true;
+            first_load_plot = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(" Reset "))
+        {
+            // reset ROI region
+            roi_selector = false;
+            first_load_plot = true;
+        }
+
         // ImGui::SetCursorPos(ImVec2(30, 332));
         ImGui::Columns(2);
         ImGui::BeginGroup();
         ImGui::SetNextItemWidth(150); 
-        ImGui::InputTextWithHint("##t4", "Learning rate", learning_rate, IM_ARRAYSIZE(learning_rate));
+        ImGui::InputTextWithHint("##t6", "Learning rate", learning_rate, IM_ARRAYSIZE(learning_rate));
         ImGui::SetNextItemWidth(150); 
-        ImGui::InputTextWithHint("##t5", "Iteration num", iteration_num, IM_ARRAYSIZE(iteration_num));
+        ImGui::InputTextWithHint("##t7", "Iteration num", iteration_num, IM_ARRAYSIZE(iteration_num));
         ImGui::EndGroup();
         // ImGui::SetCursorPos(ImVec2(right_window_size.x - 210, 360));
         ImGui::NextColumn();
@@ -389,7 +429,7 @@ int main(int, char**)
         ImGui::SetCursorPos(ImVec2(10, right_window_size.y - 28));
         ImGui::Text("App FPS: %.1f", io.Framerate);
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 200, right_window_size.y - 28));
-        ImGui::Text("By Dr. Yi  V: 0.1.1");
+        ImGui::Text("By Dr. Yi  V: 0.1.2");
         ImGui::End();
 
         // Rendering

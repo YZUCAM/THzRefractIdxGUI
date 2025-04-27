@@ -19,11 +19,9 @@ extern spectrum_dataset sam_spectrum;
 extern spectrum_dataset sam_delay_spectrum;
 
 // processed data
-extern torch::Tensor Tm1;
-extern torch::Tensor Tm2;
-extern std::vector<double> Tm1_abs;
-extern std::vector<double> Tm2_abs;
+extern complex_transmission_dataset c_t_dataset;
 
+extern roi_dataset ROI_data;
 
 
 // under 1280 x 720 main window size, the each widget size define here:

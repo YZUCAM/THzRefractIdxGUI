@@ -41,6 +41,24 @@ struct spectrum_dataset
     std::vector<double> fty_abs;
 };
 
+struct complex_transmission_dataset
+{
+    torch::Tensor Tm1;
+    torch::Tensor Tm2;
+    std::vector<double> Tm1_abs;
+    std::vector<double> Tm2_abs;
+};
+
+struct roi_dataset
+{
+    torch::Tensor roi_Tm1;
+    torch::Tensor roi_Tm2;
+    // torch::Tensor roi_w;
+    std::vector<double> roi_Tm1_abs;
+    std::vector<double> roi_Tm2_abs;
+    std::vector<double> roi_freqsTHz;
+};
+
 void read_csv_columns(const std::string& filename, std::vector<double>& c1,
     std::vector<double>& c2, int skip_rows = 0);
 
