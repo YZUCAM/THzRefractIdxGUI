@@ -1,16 +1,17 @@
 // some custom widget are listed here.
 
 #include "imgui_filedialog.h"
-#include "global_logger.h"
+// #include "global_logger.h"
 
 
+std::vector<double> pos;
+int skip_row = 0;
 std::unordered_map<std::string, spectrum_dataset> spectrum_container;
 spectrum_dataset ref_spectrum;
 spectrum_dataset sam_spectrum;
 spectrum_dataset sam_delay_spectrum;
 
 complex_transmission_dataset c_t_dataset;
-
 
 
 

@@ -25,11 +25,9 @@ passed by reference, to increase the overall performance and reduce lagging
 #include <string>
 #include <vector>
 #include <csv.h>
-#include <fft.h>
+#include "fft.h"
+// #include "global_logger.h"
 
-
-extern std::vector<double> pos;
-extern int skip_row;
 
 struct spectrum_dataset 
 {
@@ -53,11 +51,30 @@ struct roi_dataset
 {
     torch::Tensor roi_Tm1;
     torch::Tensor roi_Tm2;
-    // torch::Tensor roi_w;
+    torch::Tensor roi_w;
     std::vector<double> roi_Tm1_abs;
     std::vector<double> roi_Tm2_abs;
     std::vector<double> roi_freqsTHz;
+    double L;
 };
+
+struct cal_parameters
+{
+    torch::Tensor n1;
+    torch::Tensor k1;
+    torch::Tensor n2;
+    torch::Tensor k2;
+    torch::Tensor n3;
+    torch::Tensor k3;
+    double L;           //thickness
+    torch::Tensor targetSpectrum1;
+    torch::Tensor targetSpectrum2;
+    torch::Tensor phase_measured;
+    bool n_grad;
+    bool L_grad;
+    bool FP;
+};
+
 
 void read_csv_columns(const std::string& filename, std::vector<double>& c1,
     std::vector<double>& c2, int skip_rows = 0);

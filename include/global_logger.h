@@ -2,7 +2,7 @@
 
 #pragma once
 #include "data_logger.h"
-#include <load.h>
+#include "load.h"
 // #include <fft.h>
 
 extern DataLogger logger;
@@ -13,6 +13,8 @@ extern bool sam_delay_selected;
 extern bool first_load_plot;
 extern std::string selected_file_type;
 
+extern std::vector<double> pos;
+extern int skip_row;
 extern std::unordered_map<std::string, spectrum_dataset> spectrum_container;
 extern spectrum_dataset ref_spectrum;
 extern spectrum_dataset sam_spectrum;
@@ -20,8 +22,9 @@ extern spectrum_dataset sam_delay_spectrum;
 
 // processed data
 extern complex_transmission_dataset c_t_dataset;
-
 extern roi_dataset ROI_data;
+
+extern cal_parameters cal_param1;
 
 
 // under 1280 x 720 main window size, the each widget size define here:

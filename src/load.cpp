@@ -1,4 +1,5 @@
-#include <load.h>
+#include "load.h"
+#include "global_logger.h"
 
 
 void read_csv_columns(const std::string& filename, std::vector<double>& c1,

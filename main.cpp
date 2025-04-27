@@ -21,8 +21,8 @@ const size_t maxLogSize = 50; // Limit log size to 50 Byte
 DataLogger logger(maxLogSize);    //log_buffer size 
 
 // variables for backend THz calculation
-std::vector<double> pos;
-int skip_row = 0;
+// std::vector<double> pos;
+// int skip_row = 0;
 
 bool ref_selected = false;
 bool sam_selected = false;
@@ -108,8 +108,9 @@ int main(int, char**)
     char ROI_to[128] = "";
     char learning_rate[128] = "";
     char iteration_num[128] = "";
+    // char L[128] = "";
     std::string point = "25";
-    std::string OptThickness = "0";
+    char OptThickness[128] = "0";
     float progress = 0.80;
 
 
@@ -331,12 +332,22 @@ int main(int, char**)
         ImVec2 input_text_size_default = ImGui::GetItemRectSize();
         ImGui::SameLine();
         ImGui::Text(point.c_str());
-
+      
         ImGui::SetCursorPos(ImVec2(10, 265));
-        ImGui::Text((std::string("Optimized Thickness: ") + OptThickness).c_str());
+        // ImGui::Text((std::string("Optimized Thickness: ") + std::string(OptThickness)).c_str());
+        ImGui::Text("Optimized Thickness: ");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(150); 
+
+        // REMARK: use this way to modify the OptThickness in the real time.
+        // strncpy(OptThickness, "100", sizeof(OptThickness));
+
+        ImGui::InputTextWithHint("##t8", "Thickness", OptThickness, IM_ARRAYSIZE(OptThickness));
         if (ImGui::Button(" Use Opt-Thickness ", ImVec2(188, 40)))
         {
             //select optimized thickness interface
+            ROI_data.L = std::stod(std::string(OptThickness));
+            logger.Log(DataLogger::INFO, "Thickness is set to: " + std::string(OptThickness));
         }
         ImGui::SameLine();
         if (ImGui::Button(" Find Thickness ", ImVec2(188, 40)))
@@ -361,10 +372,10 @@ int main(int, char**)
         if (ImGui::Button(" Set "))
         {
             // reset ROI region
-            logger.Log(DataLogger::INFO, "Get ROI struct info");
-            logger.Log(DataLogger::INFO, std::string(ROI_from));
-            logger.Log(DataLogger::INFO, std::string(ROI_to));
-            set_ROI_dataset(c_t_dataset, ROI_data, std::string(ROI_from), std::string(ROI_to), spectrum_container["ref"].freqsTHz);
+            // logger.Log(DataLogger::INFO, "Get ROI struct info");
+            // logger.Log(DataLogger::INFO, std::string(ROI_from));
+            // logger.Log(DataLogger::INFO, std::string(ROI_to));
+            set_ROI_dataset(c_t_dataset, ROI_data, spectrum_container["ref"], std::string(ROI_from), std::string(ROI_to));
             roi_selector = true;
             first_load_plot = true;
         }
