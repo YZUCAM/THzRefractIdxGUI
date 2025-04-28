@@ -24,7 +24,9 @@ extern spectrum_dataset sam_delay_spectrum;
 extern complex_transmission_dataset c_t_dataset;
 extern roi_dataset ROI_data;
 
-extern cal_parameters cal_param1;
+extern cal_parameters cal_param;
+
+extern phase_dataset phase_info;
 
 
 // under 1280 x 720 main window size, the each widget size define here:

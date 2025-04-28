@@ -30,7 +30,12 @@ bool sam_delay_selected = false;
 bool first_load_plot = false;
 bool roi_selector = false;
 
+bool test_phase = false;
+
 std::string selected_file_type = "";
+
+// variable for TEST PURPOSE DELETE later
+
 
 
 
@@ -67,8 +72,9 @@ int main(int, char**)
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup Dear ImGui Style
-    ImGui::StyleColorsDark();
-    // ImGui::StyleColorsLight();
+    // ImGui::StyleColorsDark();
+    ImGui::StyleColorsLight();
+    
 
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -210,13 +216,15 @@ int main(int, char**)
         if (first_load_plot){ImPlot::SetNextAxesToFit();}
         if (ImPlot::BeginPlot("Complex Refractive Index", plot3_size)) 
         {
-            static float xs[100], ys[100];
-            for (int i = 0; i < 100; ++i) {
-                xs[i] = i * 0.1f;
-                ys[i] = cos(xs[i]);
-            }
             ImPlot::SetupLegend(ImPlotLocation_NorthEast);
-            ImPlot::PlotLine("Cosine", xs, ys, 100);
+            if (test_phase)
+            {
+            // ImPlot::PlotLine("unwrap phase1", spectrum_container["ref"].freqsTHz.data(), check_phase[0].data(), c_t_dataset.Tm1_abs.size());
+            }
+            else
+            {
+                ImPlot::PlotLine("unwrap phase1", spectrum_container["ref"].freqsTHz.data(), spectrum_container["ref"].fty_abs.data(), c_t_dataset.Tm1_abs.size());   
+            }
             ImPlot::EndPlot();
         }         
 
@@ -313,6 +321,8 @@ int main(int, char**)
         if (ImGui::Button(" Save Data "))
         {
             //save data
+            // get_phase(c_t_dataset, std::string(ROI_from), std::string(ROI_to), check_phase);
+            // test_phase = true;
 
         }
         ImGui::EndGroup();

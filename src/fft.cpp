@@ -3,7 +3,7 @@
 torch::Tensor fft(std::vector<double> v1)
 {
     torch::Tensor input = torch::tensor(v1, torch::kFloat);
-    torch::Tensor rfft_result = torch::fft::rfft(input);
+    torch::Tensor rfft_result = torch::fft::rfft(input).conj();
 
     return rfft_result;
 }

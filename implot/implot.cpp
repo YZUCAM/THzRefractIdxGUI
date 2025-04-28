@@ -171,7 +171,7 @@ ImPlotInputMap::ImPlotInputMap() {
 
 ImPlotStyle::ImPlotStyle() {
 
-    LineWeight         = 1;
+    LineWeight         = 3;
     Marker             = ImPlotMarker_None;
     MarkerSize         = 4;
     MarkerWeight       = 1;

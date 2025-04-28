@@ -67,12 +67,19 @@ struct cal_parameters
     torch::Tensor n3;
     torch::Tensor k3;
     double L;           //thickness
-    torch::Tensor targetSpectrum1;
-    torch::Tensor targetSpectrum2;
-    torch::Tensor phase_measured;
+    // torch::Tensor targetSpectrum1;
+    // torch::Tensor targetSpectrum2;
+    // torch::Tensor phase_measured;
     bool n_grad;
     bool L_grad;
     bool FP;
+};
+
+struct phase_dataset
+{
+    torch::Tensor roi_measured_phase1;
+    torch::Tensor roi_measured_phase2;
+    double controlled_phase_delay = 0;
 };
 
 
