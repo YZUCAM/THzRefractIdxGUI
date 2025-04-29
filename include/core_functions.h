@@ -5,11 +5,13 @@
 #include <cmath>
 #include "global_logger.h"
 
-void tensor2vector_cri(const torch::Tensor& t, std::vector<float>& v);
+void tensor2vector(const torch::Tensor& t, std::vector<float>& v);
 torch::Tensor construct_w(const spectrum_dataset& spectrum);
 torch::Tensor get_complex_transmission(const spectrum_dataset& s1, const spectrum_dataset& r1);
 
 void set_ROI_dataset(std::string from, std::string to);
+
+void init_thickness_scan(std::string from, std::string to, std::string step);
 
 torch::Tensor unwrap(const torch::Tensor& phase, float discontinuity = M_PI);
 
@@ -25,7 +27,7 @@ std::pair<torch::Tensor, torch::Tensor> tensor_cal_transmission_phase(const torc
 torch::Tensor tensor_cal_euclidean_dist(const torch::Tensor& t_cal, const torch::Tensor& t_m, const torch::Tensor& phase_measured, 
     const torch::Tensor& phase_compen, const torch::Tensor& w, const torch::Tensor& L, const torch::Tensor& n2, const torch::Tensor& n1);
 
-
+void clear_data();
 void prepare_network_prams();
 void update_network_prams(cal_parameters& parameters, torch::Tensor& opt_n, torch::Tensor& opt_k, torch::Tensor new_L);
 
@@ -58,3 +60,5 @@ train_step(ExtractIndexNetwork& model,torch::optim::Optimizer& optimizer, int ma
 
 
 void extraction_freestanding(std::string lr, std::string max_ep, std::string from, std::string to);
+
+void extraction_thickness_freestanding(std::string lr, std::string max_ep, std::string from, std::string to);

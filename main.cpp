@@ -20,6 +20,9 @@
 
 std::atomic<bool> isTraining = false;
 std::atomic<float> progress = 0;
+std::atomic<bool> stopFlag = false;
+std::thread trainingThread;
+std::thread thicknessThread;
 
 
 // Setup Datalogger
@@ -37,9 +40,11 @@ bool sam_delay_selected = false;
 bool first_load_plot = false;
 bool roi_selector = false;
 
-bool test_phase = false;
 
 std::string selected_file_type = "";
+std::string point = "";
+
+float induced_phase_delay;
 
 // float progress = 0.0;
 
@@ -117,12 +122,13 @@ int main(int, char**)
     char thick_from[128] = "";
     char thick_to[128] = "";
     char thick_step[128] = "";
+    char phase_delay[128] = "";
     char ROI_from[128] = "";
     char ROI_to[128] = "";
     char learning_rate[128] = "";
     char iteration_num[128] = "";
     // char L[128] = "";
-    std::string point = "25";
+    
     char OptThickness[128] = "0";
     
 
@@ -252,15 +258,11 @@ int main(int, char**)
         ImGui::Begin("Plot4", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);                
         ImVec2 plot4_size = ImGui::GetContentRegionAvail(); 
         if (first_load_plot){ImPlot::SetNextAxesToFit();}
-        if (ImPlot::BeginPlot("Optimization Error", plot4_size)) 
+        if (ImPlot::BeginPlot("Thickness Error", plot4_size)) 
         {
-            static float xs[100], ys[100];
-            for (int i = 0; i < 100; ++i) {
-                xs[i] = i * 0.1f;
-                ys[i] = cos(xs[i]);
-            }
+            ImPlot::SetupAxes("Thickness (m)", "Error (a.u.)");
             ImPlot::SetupLegend(ImPlotLocation_NorthEast);
-            ImPlot::PlotLine("Cosine", xs, ys, 100);
+            ImPlot::PlotLine("t", thickness_info.thickarry.data(), thickness_info.thick_error.data(), thickness_info.thick_error.size());
             ImPlot::EndPlot();
         }         
 
@@ -347,17 +349,22 @@ int main(int, char**)
         ImGui::Separator();
         ImGui::Text("Thickness Optimization");
         ImVec2 text_size_default = ImGui::GetItemRectSize();
-        ImGui::SetNextItemWidth(100); 
+        ImGui::SetNextItemWidth(80); 
         ImGui::InputTextWithHint("##t1", "From", thick_from, IM_ARRAYSIZE(thick_from));
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(100); 
+        ImGui::SetNextItemWidth(80); 
         ImGui::InputTextWithHint("##t2", "To", thick_to, IM_ARRAYSIZE(thick_to));
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(100); 
+        ImGui::SetNextItemWidth(80); 
         ImGui::InputTextWithHint("##t3", "Step", thick_step, IM_ARRAYSIZE(thick_step));
-        ImVec2 input_text_size_default = ImGui::GetItemRectSize();
         ImGui::SameLine();
         ImGui::Text(point.c_str());
+        ImGui::SameLine();
+        if (ImGui::Button(" Init "))
+        {
+            // 1. initial thickness info data
+            init_thickness_scan(std::string(thick_from), std::string(thick_to), std::string(thick_step));
+        }
       
         ImGui::SetCursorPos(ImVec2(10, 265));
         // ImGui::Text((std::string("Optimized Thickness: ") + std::string(OptThickness)).c_str());
@@ -374,19 +381,36 @@ int main(int, char**)
             //select optimized thickness interface
             // ROI_data.L = torch::Tensor(std::stod(std::string(OptThickness)));
             ROI_data.L = torch::tensor(std::stod(std::string(OptThickness)), torch::dtype(torch::kFloat));
-
             logger.Log(DataLogger::INFO, "Thickness is set to: " + std::string(OptThickness));
         }
         ImGui::SameLine();
+        ImGui::BeginDisabled(isTraining);
         if (ImGui::Button(" Find Thickness ", ImVec2(188, 40)))
         {
-            //find thickness interface
+            std::cout << "click find thickness button" << std::endl;
+            //  start do recursive finding thickness algo
+            stopFlag = false;
+            isTraining = true;
+            if (thicknessThread.joinable()){
+                thicknessThread.join();}
+            thicknessThread = std::thread(extraction_thickness_freestanding, std::string(learning_rate), std::string(iteration_num), std::string(ROI_from), std::string(ROI_to));
+            // trainingThread.detach();
+            first_load_plot = true;
         }
-        
+        ImGui::EndDisabled();
 
         // Extract Refractive Idx Section
         ImGui::Separator();
         ImGui::Text("Extract Complex Refractive Index");
+        // controlled phase delay
+        ImGui::SetNextItemWidth(180); 
+        ImGui::InputTextWithHint("##t9", "Phase Delay", phase_delay, IM_ARRAYSIZE(phase_delay));
+        ImGui::SameLine();
+        if (ImGui::Button(" Set Phase Delay "))
+        {
+            induced_phase_delay = std::stof(std::string(phase_delay));
+            logger.Log(DataLogger::INFO, "Set introduced phase delay: " + std::string(phase_delay));
+        }
         // Select region of interest
         ImGui::Text("Select region of interest: ");
         ImGui::BeginGroup();
@@ -427,17 +451,28 @@ int main(int, char**)
         ImGui::EndGroup();
         // ImGui::SetCursorPos(ImVec2(right_window_size.x - 210, 360));
         ImGui::NextColumn();
-        if (!isTraining && ImGui::Button(" Extraction ", ImVec2(180, 30)))
+        ImGui::BeginDisabled(isTraining);
+        if (ImGui::Button(" Extraction ", ImVec2(180, 30)))
         {
             //extraction refractive index interface
-            std::thread trainingThread(extraction_freestanding, std::string(learning_rate), std::string(iteration_num), std::string(ROI_from), std::string(ROI_to));
-            trainingThread.detach();
+            stopFlag = false;
+            isTraining = true;
+            if (trainingThread.joinable()){
+                trainingThread.join();}
+            trainingThread = std::thread(extraction_freestanding, std::string(learning_rate), std::string(iteration_num), std::string(ROI_from), std::string(ROI_to));
+            // trainingThread.detach();
             first_load_plot = true;
-            
         }
+        ImGui::EndDisabled();
         if (ImGui::Button(" Stop ", ImVec2(180, 30)))
         {
             //extraction stop interface
+            stopFlag = true;
+            if (trainingThread.joinable()) 
+            {
+                trainingThread.join();
+            }
+            isTraining = false;
         }
         ImGui::Columns(1); // back to single column
         ImGui::Separator(); 
@@ -450,6 +485,12 @@ int main(int, char**)
         ImGui::SameLine();
         ImGui::RadioButton("Freq Domain", TimeFreqSelect == 1); if (ImGui::IsItemClicked()) {TimeFreqSelect = 1; first_load_plot = true;}
 
+        ImGui::SetCursorPos(ImVec2(right_window_size.x - 160, right_window_size.y - (int)(right_window_size.y * 190 / 720) - 121));
+        if (ImGui::Button("Clear ALL DATA"))
+        {
+            // clear all stored data
+            clear_data();
+        } 
 
         // DataLogger Section
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 105, right_window_size.y - (int)(right_window_size.y * 190 / 720) - 61));  // y offset 26
@@ -476,7 +517,7 @@ int main(int, char**)
         ImGui::SetCursorPos(ImVec2(10, right_window_size.y - 28));
         ImGui::Text("App FPS: %.1f", io.Framerate);
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 200, right_window_size.y - 28));
-        ImGui::Text("By Dr. Yi  V: 0.1.2");
+        ImGui::Text("By Dr. Yi  V: 0.1.5");
         ImGui::End();
 
         // Rendering

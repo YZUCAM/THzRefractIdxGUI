@@ -16,9 +16,11 @@ phase_dataset phase_info;
 
 complex_refractive_index cri;
 
+thickness_finder thickness_info;
+
 
 // convert tensor data to vector data for visulization
-void tensor2vector_cri(const torch::Tensor& t, std::vector<float>& v)
+void tensor2vector(const torch::Tensor& t, std::vector<float>& v)
 {
     v.resize(t.size(0));
     std::memcpy(v.data(), t.data_ptr<float>(), t.numel() * sizeof(float));
@@ -86,6 +88,48 @@ void set_ROI_dataset(std::string from, std::string to)
     }
     
 }
+
+// robust checked.
+void init_thickness_scan(std::string from, std::string to, std::string step)
+{
+    thickness_info.thickarry.clear();
+
+    float idx_from = std::stof(from);
+    float idx_to = std::stof(to);
+    float idx_step = std::stof(step);
+    int N = (int)((idx_to - idx_from)/idx_step);
+
+    if (idx_from >= 0 && idx_from <= idx_to)
+    {
+        std::vector<float> thickness_mesh = linspace(idx_from, idx_to, N);
+
+        std::cout << "thickmesh size: " << thickness_mesh.size() << std::endl;
+
+        thickness_info.thickarry.resize(thickness_mesh.size());
+        std::copy(thickness_mesh.begin(), thickness_mesh.end(), thickness_info.thickarry.begin());
+
+        // if (idx_from >= 0 && idx_to <= thickness_mesh.size() && idx_from <= idx_to)
+        // {
+        //     std::copy(thickness_mesh.begin() + idx_from, thickness_mesh.begin() + idx_to, std::back_inserter(thickness_info.thickarry));
+        // }
+        point = std::to_string(N);
+        logger.Log(DataLogger::INFO, "Initial thickness scan mesh grid success.");
+    }
+    else
+    {
+        logger.Log(DataLogger::ERROR, "Invalid input value, re-enter thickness range");
+    }
+
+
+    // std::cout << "thickarray size: " << thickness_info.thickarry.size() << std::endl;
+    // std::cout << "first thickness: " << thickness_info.thickarry[0] << std::endl;
+    std::cout << "in init thickness function, print vector: " << std::endl;
+    for (const auto& val : thickness_info.thickarry) {
+        std::cout << val << std::endl;
+    }
+
+}
+
 
 // ---------------key functions--------------------- //
 
@@ -217,6 +261,51 @@ torch::Tensor tensor_cal_euclidean_dist(
 // ------------------------------------------------- //
 
 
+void clear_data()
+{
+    ROI_data.roi_Tm1_abs.clear();
+    ROI_data.roi_Tm2_abs.clear();
+    ROI_data.roi_freqsTHz.clear();
+    ROI_data.roi_Tm1 = torch::empty({0});
+    ROI_data.roi_Tm2 = torch::empty({0});
+    ROI_data.roi_w = torch::empty({0});
+    ROI_data.L = torch::empty({0});
+
+    cal_param.n1 = torch::empty({0});
+    cal_param.k1 = torch::empty({0});
+    cal_param.n2 = torch::empty({0});
+    cal_param.k2 = torch::empty({0});
+    cal_param.n3 = torch::empty({0});
+    cal_param.k3 = torch::empty({0});
+    cal_param.L = torch::empty({0});
+    cal_param.n_grad = true;
+    cal_param.L_grad = false;
+    cal_param.FP = true;
+
+    phase_info.controlled_phase_delay = 0;
+    phase_info.roi_measured_phase1 = torch::empty({0});
+    phase_info.roi_measured_phase2 = torch::empty({0});
+
+    cri.n2.clear();
+    cri.k2.clear();
+
+    thickness_info.thickarry.clear();
+    thickness_info.thick_error.clear();
+
+    c_t_dataset.Tm1 = torch::empty({0});
+    c_t_dataset.Tm2 = torch::empty({0});
+    c_t_dataset.Tm1_abs.clear();
+    c_t_dataset.Tm2_abs.clear();
+
+    spectrum_container.clear();
+}
+
+
+
+
+
+
+
 void prepare_network_prams()
 {
 
@@ -284,9 +373,14 @@ train_step(
 
     model.to(device);
 
-    
+    logger.Log("-------------------");
     for (int epoch = 0; epoch < max_epochs; ++epoch) 
     {
+        if (stopFlag.load())
+        {
+            logger.Log("Training process stopped."); 
+            break;
+        }
         torch::Tensor loss = model.forward();
         train_loss = loss.item<float>();
 
@@ -294,23 +388,24 @@ train_step(
         loss.backward();
         optimizer.step();
 
-        if (epoch % 500 == 0) {
-            std::cout << "Epoch " << (epoch + 1) << "/" << max_epochs  << " | Train loss: " << train_loss << std::endl;
+        if (epoch % 1000 == 0) {
+            // std::cout << "Epoch " << (epoch + 1) << "/" << max_epochs  << " | Train loss: " << train_loss << std::endl;
             std::string message = std::to_string(epoch + 1) + "/" + std::to_string(max_epochs) + "|loss: " + std::to_string(train_loss);
             logger.Log(message); 
         }
 
         progress = (float)(epoch + 1)/max_epochs;
     }
+
     
     // Save final loss
     results["train_loss"].push_back(train_loss);
 
-    std::cout << "--------------------------------------------" << std::endl;
-    logger.Log("-------------------");
-    std::cout << "Thickness: " 
-              << (model.L.cpu().detach().item<float>() * 1e3)
-              << " mm" << std::endl;
+    // std::cout << "--------------------------------------------" << std::endl;
+    // logger.Log("-------------------");
+    // std::cout << "Thickness: " 
+    //           << (model.L.cpu().detach().item<float>() * 1e3)
+    //           << " mm" << std::endl;
 
     // Return dictionary and important tensors (n2, k2, L)
     std::vector<torch::Tensor> params = {
@@ -324,9 +419,14 @@ train_step(
 
 
 
-// Extraction button call back function
+// Extraction button call back function (basic case known thickness single layer freestanding)
 void extraction_freestanding(std::string lr, std::string max_ep, std::string from, std::string to)
-{
+{   
+    if (cal_param.L.item<float>()== 0)
+    {
+        logger.Log(DataLogger::ERROR, "Opt-thickness should not be 0.");
+        return;
+    }
     isTraining = true;
 
     float lr_ = std::stod(lr);
@@ -348,12 +448,109 @@ void extraction_freestanding(std::string lr, std::string max_ep, std::string fro
     torch::Tensor optimal_k2 = ret.second[1];   // k2
     torch::Tensor optimal_thickness = ret.second[2];   // L
 
-    tensor2vector_cri(optimal_n2, cri.n2);
-    tensor2vector_cri(optimal_k2, cri.k2);
+    tensor2vector(optimal_n2, cri.n2);
+    tensor2vector(optimal_k2, cri.k2);
 
     isTraining = false;
-
     first_load_plot = true;
 
-    // model can run but need to check correctness.
+}
+
+
+
+void extraction_thickness_freestanding(std::string lr, std::string max_ep, std::string from, std::string to)
+{
+
+    std::cout << "enter extraction_thickness_freestanding" << std::endl;
+
+    // this mode need two parameterset and need Tm1 and Tm2
+    isTraining = true;
+
+    thickness_info.thick_error.clear();
+
+    float lr_ = std::stod(lr);
+    int max_epochs = std::stoi(max_ep);
+    torch::Device device(torch::kCPU);
+
+    // two step optimization, first step:
+    set_ROI_dataset(from, to);
+    get_phase(from, to);
+
+    // std::cout << "thickarray size: " << thickness_info.thickarry.size() << std::endl;
+    // std::cout << "first thickness: " << thickness_info.thickarry[0] << std::endl;
+
+    // start the loop here
+    for (const float&  value : thickness_info.thickarry) 
+    {
+        // std::cout << "current loop thickness: " << value << std::endl;
+
+        prepare_network_prams();
+        cal_param.L = torch::tensor({value}, torch::kFloat);
+
+        std::cout << "current tried L in opt: " << std::to_string(cal_param.L.item<float>()) << std::endl;
+        logger.Log("Current verifing thickness: " + std::to_string(cal_param.L.item<float>()));
+
+        // dataset empty check.
+        if (ROI_data.roi_Tm2.numel() == 0)
+        {
+            logger.Log(DataLogger::ERROR, "Please load second complex transmission dataset");
+            return;
+        }
+
+        ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm1, phase_info.roi_measured_phase1, ROI_data.roi_w);
+        torch::optim::Adam optimizer(
+            { extraction_model.n2, extraction_model.k2 }, torch::optim::AdamOptions(lr_)
+        );
+
+        logger.Log("Start first step optimization");
+        std::pair<std::unordered_map<std::string, std::vector<float>>, std::vector<torch::Tensor>> ret = train_step(extraction_model, optimizer, max_epochs, device);
+
+        torch::Tensor optimal_n2 = ret.second[0];   // n2
+        torch::Tensor optimal_k2 = ret.second[1];   // k2
+        torch::Tensor L_optimal = ret.second[2];   // L
+
+        tensor2vector(optimal_n2, cri.n2);
+        tensor2vector(optimal_k2, cri.k2);
+
+        //pass n2 k2 to second model
+        cal_param.n2 = optimal_n2;
+        cal_param.k2 = optimal_k2;
+        cal_param.n_grad = false;
+        cal_param.L_grad = true;
+
+        logger.Log("Start second step optimization");
+
+        ExtractIndexNetwork extraction_model2(cal_param, ROI_data.roi_Tm2, phase_info.roi_measured_phase2, ROI_data.roi_w);
+        torch::optim::Adam optimizer2(
+            { extraction_model2.L }, torch::optim::AdamOptions(lr_)
+        );
+
+        std::pair<std::unordered_map<std::string, std::vector<float>>, std::vector<torch::Tensor>> ret2 = train_step(extraction_model2, optimizer2, max_epochs, device);
+        
+        torch::Tensor L_new = ret2.second[2];
+
+        std::cout << "After two optimization: " << std::endl;
+        std::cout << "L_optimal: " << std::to_string(L_optimal.item<float>()) << std::endl;
+        std::cout << "L_new: " << std::to_string(L_new.item<float>()) << std::endl;
+        std::cout << "--------------------------------------------" << std::endl;
+
+        logger.Log("-------------------");
+        logger.Log("thickness in 1st step: " + std::to_string(L_optimal.item<float>()));
+        logger.Log("thickness in 2nd step: " + std::to_string(L_new.item<float>()));
+
+        // calculate error
+        float cal_phase_delay = (L_new - L_optimal).item<float>();
+        float thickness_error = std::abs((cal_phase_delay - induced_phase_delay) * 1e4);
+
+        logger.Log("thickness error: " + std::to_string(thickness_error));
+        logger.Log("-------------------");
+
+        thickness_info.thick_error.push_back(thickness_error);
+        first_load_plot = true;
+
+    }
+
+    isTraining = false;
+    first_load_plot = true;
+
 }

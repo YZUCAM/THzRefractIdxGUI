@@ -86,7 +86,13 @@ struct complex_refractive_index
 {
     std::vector<float> n2;
     std::vector<float> k2;
-    float thickness;
+    // float thickness;
+};
+
+struct thickness_finder
+{
+    std::vector<float> thickarry;
+    std::vector<float> thick_error; 
 };
 
 void read_csv_columns(const std::string& filename, std::vector<float>& c1,
