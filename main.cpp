@@ -10,11 +10,18 @@
 #include <GLFW/glfw3.h> 
 #include <implot.h>
 #include <cmath>
+#include <atomic>
+#include <thread>
 #include "data_logger.h"
 #include "imgui_filedialog.h"
 #include "global_logger.h"      // ---> store all global variables
 
 // define global variables
+
+std::atomic<bool> isTraining = false;
+std::atomic<float> progress = 0;
+
+
 // Setup Datalogger
 const size_t maxLines = 50;  // Display the last 50 lines
 const size_t maxLogSize = 50; // Limit log size to 50 Byte
@@ -34,7 +41,7 @@ bool test_phase = false;
 
 std::string selected_file_type = "";
 
-// variable for TEST PURPOSE DELETE later
+// float progress = 0.0;
 
 
 
@@ -117,7 +124,7 @@ int main(int, char**)
     // char L[128] = "";
     std::string point = "25";
     char OptThickness[128] = "0";
-    float progress = 0.80;
+    
 
 
 
@@ -217,14 +224,23 @@ int main(int, char**)
         if (ImPlot::BeginPlot("Complex Refractive Index", plot3_size)) 
         {
             ImPlot::SetupLegend(ImPlotLocation_NorthEast);
-            if (test_phase)
-            {
-            // ImPlot::PlotLine("unwrap phase1", spectrum_container["ref"].freqsTHz.data(), check_phase[0].data(), c_t_dataset.Tm1_abs.size());
-            }
-            else
-            {
-                ImPlot::PlotLine("unwrap phase1", spectrum_container["ref"].freqsTHz.data(), spectrum_container["ref"].fty_abs.data(), c_t_dataset.Tm1_abs.size());   
-            }
+            
+            // ImPlot::SetupAxis(ImAxis_X1, "Frequency (Hz)", ImPlotAxisFlags_AutoFit);
+            // ImPlot::SetupAxis(ImAxis_Y1, "n", ImPlotAxisFlags_AutoFit);
+            // ImPlot::SetupAxis(ImAxis_Y2, "k", ImPlotAxisFlags_AuxDefault | ImPlotAxisFlags_AutoFit);
+            ImPlot::SetupAxis(ImAxis_X1, "Frequency (Hz)");
+            ImPlot::SetupAxis(ImAxis_Y1, "n");
+            ImPlot::SetupAxis(ImAxis_Y2, "k", ImPlotAxisFlags_AuxDefault);
+
+            // Activate second axis (on the right)
+            // ImPlot::SetupAxisLimits(ImAxis_X1, freq_min, freq_max);
+            ImPlot::SetAxes(ImAxis_X1, ImAxis_Y1); // plot on primary y-axis
+            ImPlot::PlotLine("n", ROI_data.roi_freqsTHz.data(), cri.n2.data(), cri.n2.size());
+
+            ImPlot::SetAxes(ImAxis_X1, ImAxis_Y2); // plot on secondary y-axis
+            ImPlot::PlotLine("k", ROI_data.roi_freqsTHz.data(), cri.k2.data(), cri.k2.size());
+
+            // ImPlot::PlotLine("n", ROI_data.roi_freqsTHz.data(), cri.n2.data(), cri.n2.size());
             ImPlot::EndPlot();
         }         
 
@@ -411,10 +427,13 @@ int main(int, char**)
         ImGui::EndGroup();
         // ImGui::SetCursorPos(ImVec2(right_window_size.x - 210, 360));
         ImGui::NextColumn();
-        if (ImGui::Button(" Extraction ", ImVec2(180, 30)))
+        if (!isTraining && ImGui::Button(" Extraction ", ImVec2(180, 30)))
         {
             //extraction refractive index interface
-            extraction_freestanding(std::string(learning_rate), std::string(iteration_num), std::string(ROI_from), std::string(ROI_to));
+            std::thread trainingThread(extraction_freestanding, std::string(learning_rate), std::string(iteration_num), std::string(ROI_from), std::string(ROI_to));
+            trainingThread.detach();
+            first_load_plot = true;
+            
         }
         if (ImGui::Button(" Stop ", ImVec2(180, 30)))
         {
@@ -422,7 +441,9 @@ int main(int, char**)
         }
         ImGui::Columns(1); // back to single column
         ImGui::Separator(); 
+        if (isTraining) {
         ImGui::ProgressBar(progress, ImVec2(400,20), (std::to_string((int)(progress*100)) + "%").c_str());
+        }
         
         // display switch
         ImGui::RadioButton("Time Domain", TimeFreqSelect == 0); if (ImGui::IsItemClicked()) {TimeFreqSelect = 0; first_load_plot = true;}

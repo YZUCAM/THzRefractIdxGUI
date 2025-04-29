@@ -33,6 +33,19 @@ void DataLogger::Log(LogLevel level, const std::string& message)
     MaintainLogSize();
 }
 
+void DataLogger::Log(const std::string& message) 
+{
+    std::ostringstream logStream;
+    // Add the actual message
+    logStream << message << std::endl;
+
+    // Update in-memory log buffer
+    logBuffer_.push_back(logStream.str());
+
+    // Maintain log size (if necessary)
+    MaintainLogSize();
+}
+
 void DataLogger::MaintainLogSize() 
 {
     if (logBuffer_.size() > maxLogSize_) {

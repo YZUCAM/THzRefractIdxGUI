@@ -21,6 +21,7 @@ public:
     ~DataLogger() = default;
 
     void Log(LogLevel level, const std::string& message);
+    void Log(const std::string& message); 
     void ClearLog();
     std::deque<std::string> GetLogBuffer() const;  // In-memory log buffer for display
 

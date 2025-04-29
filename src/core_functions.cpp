@@ -14,6 +14,15 @@ cal_parameters cal_param;
 
 phase_dataset phase_info;
 
+complex_refractive_index cri;
+
+
+// convert tensor data to vector data for visulization
+void tensor2vector_cri(const torch::Tensor& t, std::vector<float>& v)
+{
+    v.resize(t.size(0));
+    std::memcpy(v.data(), t.data_ptr<float>(), t.numel() * sizeof(float));
+}
 
 
 // convert everything to tensor for vector and matrix calculation maybe simple.
@@ -275,7 +284,9 @@ train_step(
 
     model.to(device);
 
-    for (int epoch = 0; epoch < max_epochs; ++epoch) {
+    
+    for (int epoch = 0; epoch < max_epochs; ++epoch) 
+    {
         torch::Tensor loss = model.forward();
         train_loss = loss.item<float>();
 
@@ -284,15 +295,19 @@ train_step(
         optimizer.step();
 
         if (epoch % 500 == 0) {
-            std::cout << "Epoch " << (epoch + 1) << "/" << max_epochs
-                      << " | Train loss: " << train_loss << std::endl;
+            std::cout << "Epoch " << (epoch + 1) << "/" << max_epochs  << " | Train loss: " << train_loss << std::endl;
+            std::string message = std::to_string(epoch + 1) + "/" + std::to_string(max_epochs) + "|loss: " + std::to_string(train_loss);
+            logger.Log(message); 
         }
-    }
 
+        progress = (float)(epoch + 1)/max_epochs;
+    }
+    
     // Save final loss
     results["train_loss"].push_back(train_loss);
 
     std::cout << "--------------------------------------------" << std::endl;
+    logger.Log("-------------------");
     std::cout << "Thickness: " 
               << (model.L.cpu().detach().item<float>() * 1e3)
               << " mm" << std::endl;
@@ -303,7 +318,7 @@ train_step(
         model.k2.cpu().detach().clone(),
         model.L.cpu().detach().clone()
     };
-
+    
     return {results, params};
 }
 
@@ -312,6 +327,8 @@ train_step(
 // Extraction button call back function
 void extraction_freestanding(std::string lr, std::string max_ep, std::string from, std::string to)
 {
+    isTraining = true;
+
     float lr_ = std::stod(lr);
     int max_epochs = std::stoi(max_ep);
     torch::Device device(torch::kCPU);
@@ -325,7 +342,18 @@ void extraction_freestanding(std::string lr, std::string max_ep, std::string fro
         { extraction_model.n2, extraction_model.k2 }, torch::optim::AdamOptions(lr_)
     );
 
-    train_step(extraction_model, optimizer, max_epochs, device);
+    std::pair<std::unordered_map<std::string, std::vector<float>>, std::vector<torch::Tensor>> ret = train_step(extraction_model, optimizer, max_epochs, device);
+
+    torch::Tensor optimal_n2 = ret.second[0];   // n2
+    torch::Tensor optimal_k2 = ret.second[1];   // k2
+    torch::Tensor optimal_thickness = ret.second[2];   // L
+
+    tensor2vector_cri(optimal_n2, cri.n2);
+    tensor2vector_cri(optimal_k2, cri.k2);
+
+    isTraining = false;
+
+    first_load_plot = true;
 
     // model can run but need to check correctness.
 }

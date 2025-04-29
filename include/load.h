@@ -82,6 +82,12 @@ struct phase_dataset
     float controlled_phase_delay = 0;
 };
 
+struct complex_refractive_index
+{
+    std::vector<float> n2;
+    std::vector<float> k2;
+    float thickness;
+};
 
 void read_csv_columns(const std::string& filename, std::vector<float>& c1,
     std::vector<float>& c2, int skip_rows = 0);

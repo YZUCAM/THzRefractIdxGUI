@@ -5,6 +5,10 @@
 #include "load.h"
 // #include <fft.h>
 
+
+extern std::atomic<bool> isTraining;
+extern std::atomic<float> progress;
+
 extern DataLogger logger;
 
 extern bool ref_selected;
@@ -27,6 +31,8 @@ extern roi_dataset ROI_data;
 extern cal_parameters cal_param;
 
 extern phase_dataset phase_info;
+
+extern complex_refractive_index cri;
 
 
 // under 1280 x 720 main window size, the each widget size define here:
