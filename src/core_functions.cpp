@@ -2,12 +2,18 @@
 
 // for fast computation, considering to change all datatype to float than double?
 
+/*
+direct use ref_spectum will cause empty struct. Use spectum_container["ref"] instead. 
+Reason need find out.
+*/
+
 // contains complex transmission data of ROI
 roi_dataset ROI_data;
 
 cal_parameters cal_param;
 
 phase_dataset phase_info;
+
 
 
 // convert everything to tensor for vector and matrix calculation maybe simple.
@@ -25,40 +31,51 @@ torch::Tensor get_complex_transmission(const spectrum_dataset& s1, const spectru
     return ret;
 }
 
-void set_ROI_dataset(complex_transmission_dataset& source, roi_dataset& df, const spectrum_dataset& spectrum, std::string from, std::string to)
+// this function need pass spectrum_container["ref"], ROI_data, c_t_dataset. Directly use global and mod variable.
+// this function has been optimized.
+void set_ROI_dataset(std::string from, std::string to)
 {
     // need input window selection
-    int idx_from = std::stoi(from);
-    int idx_to = std::stoi(to);
-
-    // clear roi_dataset container data
-    df.roi_freqsTHz.clear();
-    df.roi_Tm1_abs.clear();
-    df.roi_Tm2_abs.clear();
-    // tensor part will be automatically rewrite so no need handle it manually
-
-    torch::Tensor w = construct_w(spectrum);
-
-    if (idx_from >= 0 && idx_to <= source.Tm1.size(0) && idx_from <= idx_to) 
+    if (from == "" || to == "")
     {
-        // freqsTHZ need reshape
-        std::copy(spectrum.freqsTHz.begin() + idx_from, spectrum.freqsTHz.begin() + idx_to, std::back_inserter(df.roi_freqsTHz));
-        // tensor data
-        df.roi_Tm1 = source.Tm1.slice(0, idx_from, idx_to).clone();
-        df.roi_w = w.slice(0, idx_from, idx_to).clone();
+        logger.Log(DataLogger::ERROR, "Please input valid number on ROI from and ROI to.");
     }
-    if (idx_from >= 0 && idx_to <= source.Tm2.size(0) && idx_from <= idx_to) 
+    else
     {
-        df.roi_Tm2 = source.Tm2.slice(0, idx_from, idx_to).clone();
+        int idx_from = std::stoi(from);
+        int idx_to = std::stoi(to);
+    
+        // clear roi_dataset container data
+        ROI_data.roi_freqsTHz.clear();
+        ROI_data.roi_Tm1_abs.clear();
+        ROI_data.roi_Tm2_abs.clear();
+        // tensor part will be automatically rewrite so no need handle it manually
+    
+        torch::Tensor w = construct_w(spectrum_container["ref"]);
+    
+        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm1.size(0) && idx_from <= idx_to) 
+        {
+            // tensor data
+            ROI_data.roi_Tm1 = c_t_dataset.Tm1.slice(0, idx_from, idx_to).clone();
+            ROI_data.roi_w = w.slice(0, idx_from, idx_to).clone();
+    
+            // freqsTHZ need reshape
+            std::copy(spectrum_container["ref"].freqsTHz.begin() + idx_from, spectrum_container["ref"].freqsTHz.begin() + idx_to, std::back_inserter(ROI_data.roi_freqsTHz));
+        }
+        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm2.size(0) && idx_from <= idx_to) 
+        {
+            ROI_data.roi_Tm2 = c_t_dataset.Tm2.slice(0, idx_from, idx_to).clone();
+        }
+        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm1_abs.size() && idx_from <= idx_to)
+        {
+            std::copy(c_t_dataset.Tm1_abs.begin() + idx_from, c_t_dataset.Tm1_abs.begin() + idx_to, std::back_inserter(ROI_data.roi_Tm1_abs));
+        }
+        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm2_abs.size() && idx_from <= idx_to)   
+        {
+            std::copy(c_t_dataset.Tm2_abs.begin() + idx_from, c_t_dataset.Tm2_abs.begin() + idx_to, std::back_inserter(ROI_data.roi_Tm2_abs));
+        }
     }
-    if (idx_from >= 0 && idx_to <= source.Tm1_abs.size() && idx_from <= idx_to)
-    {
-        std::copy(source.Tm1_abs.begin() + idx_from, source.Tm1_abs.begin() + idx_to, std::back_inserter(df.roi_Tm1_abs));
-    }
-    if (idx_from >= 0 && idx_to <= source.Tm2_abs.size() && idx_from <= idx_to)   
-    {
-        std::copy(source.Tm2_abs.begin() + idx_from, source.Tm2_abs.begin() + idx_to, std::back_inserter(df.roi_Tm2_abs));
-    }
+    
 }
 
 // ---------------key functions--------------------- //
@@ -87,20 +104,21 @@ torch::Tensor unwrap(const torch::Tensor& phase, double discontinuity)
     return phase + correction;
 }
 
-void get_phase(complex_transmission_dataset& source, std::string from, std::string to, phase_dataset& phase_info)
+// get_phase function has been optimized direct access global variable
+void get_phase(std::string from, std::string to)
 {
     // slice to desire ROI
     int idx_from = std::stoi(from);
     int idx_to = std::stoi(to);
 
     // NEED UNWRAP FROM 0 FREQUENCE AND THEN CHOP TO DESIGER REGION
-    if (source.Tm1.numel() == 0)
+    if (c_t_dataset.Tm1.numel() == 0)
     {
         logger.Log(DataLogger::INFO, "No Tm1 data.");
     }
     else
     {
-        torch::Tensor angle1 = torch::angle(source.Tm1.to(torch::kComplexDouble));  // convert it to double!
+        torch::Tensor angle1 = torch::angle(c_t_dataset.Tm1.to(torch::kComplexDouble));  // convert it to double!
         torch::Tensor phase1 = unwrap(angle1);
 
         if (idx_from >= 0 && idx_to <= phase1.size(0) && idx_from <= idx_to) 
@@ -108,13 +126,13 @@ void get_phase(complex_transmission_dataset& source, std::string from, std::stri
             phase_info.roi_measured_phase1 = phase1.slice(0, idx_from, idx_to).clone();
         }
     }
-    if (source.Tm2.numel() == 0)
+    if (c_t_dataset.Tm2.numel() == 0)
     {
         logger.Log(DataLogger::INFO, "No Tm2 data.");
     }
     else
     {
-        torch::Tensor angle2 = torch::angle(source.Tm2.to(torch::kComplexDouble));  // convert it to double!
+        torch::Tensor angle2 = torch::angle(c_t_dataset.Tm2.to(torch::kComplexDouble));  // convert it to double!
         torch::Tensor phase2 = unwrap(angle2);
 
         if (idx_from >= 0 && idx_to <= phase2.size(0) && idx_from <= idx_to) 
@@ -125,44 +143,95 @@ void get_phase(complex_transmission_dataset& source, std::string from, std::stri
 }
 // need pay attention to the angle info and see if angle is increasing from zero. (PASS)
 
+// Simulation part
+
+std::pair<torch::Tensor, torch::Tensor> tensor_cal_FP(
+    const torch::Tensor& n1, const torch::Tensor& k1,
+    const torch::Tensor& n2, const torch::Tensor& k2,
+    const torch::Tensor& n3, const torch::Tensor& k3,
+    const torch::Tensor& w, const torch::Tensor& L)
+{
+    auto j = torch::complex(torch::tensor(0.0), torch::tensor(1.0));
+
+    auto numerator = (n2 - n1 + j * (k2 - k1)) * (n2 - n3 + j * (k2 - k3));
+    auto denominator = (n2 + n1 + j * (k2 + k1)) * (n2 + n3 + j * (k2 + k3));
+    auto exp_term = torch::exp(2 * j * (n2 + j * k2) * w * L / C);
+
+    auto fp = 1.0 / (1.0 - numerator / denominator * exp_term);
+    auto fp_phase = torch::angle(fp);
+
+    return std::pair<torch::Tensor, torch::Tensor>(fp, fp_phase);
+}
 
 
+std::pair<torch::Tensor, torch::Tensor> tensor_cal_transmission_phase(
+    const torch::Tensor& n1, const torch::Tensor& k1,
+    const torch::Tensor& n2, const torch::Tensor& k2,
+    const torch::Tensor& n3, const torch::Tensor& k3,
+    const torch::Tensor& w, torch::Tensor& L,
+    bool FP)
+{
+    auto j = torch::complex(torch::tensor(0.0), torch::tensor(1.0));
+
+    auto coeff = 2 * (n2 + j * k2) * (n1 + n3 + j * (k1 + k3)) /
+                 ((n2 + n1 + j * (k2 + k1)) * (n2 + n3 + j * (k2 + k3)));
+
+    torch::Tensor T_cal, phase_by_k;
+
+    if (FP)
+    {
+        auto [fp_coeff, fp_phase] = tensor_cal_FP(n1, k1, n2, k2, n3, k3, w, L);
+        T_cal = coeff * torch::exp(j * (n2 - n1 + j * (k2 - k1)) * w * L / C) * fp_coeff;
+        phase_by_k = torch::angle(coeff) + fp_phase;
+    }
+    else
+    {
+        T_cal = coeff * torch::exp(j * (n2 - n1 + j * (k2 - k1)) * w * L / C);
+        phase_by_k = torch::angle(coeff);
+    }
+
+    return std::pair<torch::Tensor, torch::Tensor>(T_cal, phase_by_k);
+}
 
 
-
-
-
-
-
-
-
+torch::Tensor tensor_cal_euclidean_dist(
+    const torch::Tensor& t_cal, const torch::Tensor& t_m,
+    const torch::Tensor& phase_measured, const torch::Tensor& phase_compen,
+    const torch::Tensor& w, const torch::Tensor& L,
+    const torch::Tensor& n2, const torch::Tensor& n1)
+{
+    auto d = torch::pow((torch::log(torch::abs(t_cal)) - torch::log(torch::abs(t_m))), 2) +
+             torch::pow((phase_compen + ((n2 - n1) * w * L / C) - phase_measured), 2);
+    return d;
+}
 
 // ------------------------------------------------- //
 
 
-void prepare_network_prams(roi_dataset& roi_data, cal_parameters& parameters, double L)
+void prepare_network_prams()
 {
 
     // torch::Tensor phase_measured;
 
-    int size = roi_data.roi_Tm1.size(0);
+    int size = ROI_data.roi_Tm1.size(0);
 
-    parameters.n1 = torch::ones({size}, torch::kDouble);
-    parameters.k1 = torch::zeros({size}, torch::kDouble);
+    cal_param.n1 = torch::ones({size}, torch::kDouble);
+    cal_param.k1 = torch::zeros({size}, torch::kDouble);
 
-    parameters.n2 = torch::ones({size}, torch::kDouble);
-    parameters.k2 = torch::zeros({size}, torch::kDouble) * 0.01;
+    cal_param.n2 = torch::ones({size}, torch::kDouble);
+    cal_param.k2 = torch::zeros({size}, torch::kDouble) * 0.01;
 
-    parameters.n3 = torch::ones({size}, torch::kDouble);
-    parameters.k3 = torch::zeros({size}, torch::kDouble);
+    cal_param.n3 = torch::ones({size}, torch::kDouble);
+    cal_param.k3 = torch::zeros({size}, torch::kDouble);
 
-    parameters.L = roi_data.L;
-    parameters.n_grad = true;
-    parameters.L_grad = false;
-    parameters.FP = true;
+    cal_param.L = ROI_data.L;
+    cal_param.n_grad = true;
+    cal_param.L_grad = false;
+    cal_param.FP = true;
+
 }
 
-void update_network_prams(cal_parameters& parameters, torch::Tensor& opt_n, torch::Tensor& opt_k, double new_L)
+void update_network_prams(cal_parameters& parameters, torch::Tensor& opt_n, torch::Tensor& opt_k, torch::Tensor new_L)
 {
     parameters.n2 = opt_n;
     parameters.k2 = opt_k;
@@ -171,18 +240,92 @@ void update_network_prams(cal_parameters& parameters, torch::Tensor& opt_n, torc
 
 
 
-
-ExtractIndexNetwork::ExtractIndexNetwork(cal_parameters& prams, torch::Tensor& ctd, torch::Tensor& pd)
+ExtractIndexNetwork::ExtractIndexNetwork(cal_parameters& prams, torch::Tensor& ctd, torch::Tensor& pd, torch::Tensor& w)
     : n1(prams.n1), k1(prams.k1), n2(prams.n2), k2(prams.k2),
       n3(prams.n3), k3(prams.k3), L(prams.L), 
-      targetSpectrum(ctd), phase_measured(pd),
+      targetSpectrum(ctd), phase_measured(pd), w(w),
       n_grad(prams.n_grad), L_grad(prams.L_grad), FP(prams.FP) {
     // Constructor body can be left empty as initialization happens in the initializer list
+    this->n2 = register_parameter("n2", n2, n_grad);
+    this->k2 = register_parameter("k2", k2, n_grad);
+    this->L = register_parameter("L", L, L_grad);
 }
 
 torch::Tensor ExtractIndexNetwork::forward() 
 {
-    // Implement your model's forward pass here. Example:
-    // This is a placeholder example, replace with your actual model logic.
-    return torch::matmul(n1, k1);  // Example operation
+    auto [T_cal_ROI, phase_extra_ROI] = tensor_cal_transmission_phase(n1, k1, n2, k2, n3, k3, w, L, FP);
+
+    auto dist1 = tensor_cal_euclidean_dist(
+        T_cal_ROI, targetSpectrum, phase_measured, phase_extra_ROI, w, L, n2, n1);
+
+    return torch::mean(dist1) * 1e5;
+}
+
+
+std::pair<std::unordered_map<std::string, std::vector<double>>, std::vector<torch::Tensor>>
+train_step(
+    ExtractIndexNetwork& model,
+    torch::optim::Optimizer& optimizer,
+    int max_epochs,
+    torch::Device device)
+{
+    double train_loss = 0.0;
+    std::unordered_map<std::string, std::vector<double>> results;
+    results["train_loss"] = {};
+
+    model.to(device);
+
+    for (int epoch = 0; epoch < max_epochs; ++epoch) {
+        torch::Tensor loss = model.forward();
+        train_loss = loss.item<double>();
+
+        optimizer.zero_grad();
+        loss.backward();
+        optimizer.step();
+
+        if (epoch % 500 == 0) {
+            std::cout << "Epoch " << (epoch + 1) << "/" << max_epochs
+                      << " | Train loss: " << train_loss << std::endl;
+        }
+    }
+
+    // Save final loss
+    results["train_loss"].push_back(train_loss);
+
+    std::cout << "--------------------------------------------" << std::endl;
+    std::cout << "Thickness: " 
+              << (model.L.cpu().detach().item<double>() * 1e3)
+              << " mm" << std::endl;
+
+    // Return dictionary and important tensors (n2, k2, L)
+    std::vector<torch::Tensor> params = {
+        model.n2.cpu().detach().clone(),
+        model.k2.cpu().detach().clone(),
+        model.L.cpu().detach().clone()
+    };
+
+    return {results, params};
+}
+
+
+
+// Extraction button call back function
+void extraction_freestanding(std::string lr, std::string max_ep, std::string from, std::string to)
+{
+    double lr_ = std::stod(lr);
+    int max_epochs = std::stoi(max_ep);
+    torch::Device device(torch::kCPU);
+
+    set_ROI_dataset(from, to);
+    get_phase(from, to);
+    prepare_network_prams();
+
+    ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm1, phase_info.roi_measured_phase1, ROI_data.roi_w);
+    torch::optim::Adam optimizer(
+        { extraction_model.n2, extraction_model.k2 }, torch::optim::AdamOptions(lr_)
+    );
+
+    train_step(extraction_model, optimizer, max_epochs, device);
+
+    // model can run but need to check correctness.
 }

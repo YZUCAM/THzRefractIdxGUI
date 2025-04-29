@@ -356,7 +356,9 @@ int main(int, char**)
         if (ImGui::Button(" Use Opt-Thickness ", ImVec2(188, 40)))
         {
             //select optimized thickness interface
-            ROI_data.L = std::stod(std::string(OptThickness));
+            // ROI_data.L = torch::Tensor(std::stod(std::string(OptThickness)));
+            ROI_data.L = torch::tensor(std::stod(std::string(OptThickness)), torch::dtype(torch::kDouble));
+
             logger.Log(DataLogger::INFO, "Thickness is set to: " + std::string(OptThickness));
         }
         ImGui::SameLine();
@@ -385,7 +387,7 @@ int main(int, char**)
             // logger.Log(DataLogger::INFO, "Get ROI struct info");
             // logger.Log(DataLogger::INFO, std::string(ROI_from));
             // logger.Log(DataLogger::INFO, std::string(ROI_to));
-            set_ROI_dataset(c_t_dataset, ROI_data, spectrum_container["ref"], std::string(ROI_from), std::string(ROI_to));
+            set_ROI_dataset(std::string(ROI_from), std::string(ROI_to));
             roi_selector = true;
             first_load_plot = true;
         }
@@ -396,6 +398,8 @@ int main(int, char**)
             roi_selector = false;
             first_load_plot = true;
         }
+
+        // std::cout << ROI_data.L << std::endl;   //[ CPUDoubleType{} ]
 
         // ImGui::SetCursorPos(ImVec2(30, 332));
         ImGui::Columns(2);
@@ -410,6 +414,7 @@ int main(int, char**)
         if (ImGui::Button(" Extraction ", ImVec2(180, 30)))
         {
             //extraction refractive index interface
+            extraction_freestanding(std::string(learning_rate), std::string(iteration_num), std::string(ROI_from), std::string(ROI_to));
         }
         if (ImGui::Button(" Stop ", ImVec2(180, 30)))
         {

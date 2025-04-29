@@ -55,7 +55,7 @@ struct roi_dataset
     std::vector<double> roi_Tm1_abs;
     std::vector<double> roi_Tm2_abs;
     std::vector<double> roi_freqsTHz;
-    double L;
+    torch::Tensor L;
 };
 
 struct cal_parameters
@@ -66,7 +66,7 @@ struct cal_parameters
     torch::Tensor k2;
     torch::Tensor n3;
     torch::Tensor k3;
-    double L;           //thickness
+    torch::Tensor L;           //thickness
     // torch::Tensor targetSpectrum1;
     // torch::Tensor targetSpectrum2;
     // torch::Tensor phase_measured;
