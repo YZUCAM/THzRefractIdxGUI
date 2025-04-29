@@ -357,7 +357,7 @@ int main(int, char**)
         {
             //select optimized thickness interface
             // ROI_data.L = torch::Tensor(std::stod(std::string(OptThickness)));
-            ROI_data.L = torch::tensor(std::stod(std::string(OptThickness)), torch::dtype(torch::kDouble));
+            ROI_data.L = torch::tensor(std::stod(std::string(OptThickness)), torch::dtype(torch::kFloat));
 
             logger.Log(DataLogger::INFO, "Thickness is set to: " + std::string(OptThickness));
         }

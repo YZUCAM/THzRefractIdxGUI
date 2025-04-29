@@ -2,8 +2,8 @@
 #include "global_logger.h"
 
 
-void read_csv_columns(const std::string& filename, std::vector<double>& c1,
-    std::vector<double>& c2, int skip_rows) 
+void read_csv_columns(const std::string& filename, std::vector<float>& c1,
+    std::vector<float>& c2, int skip_rows) 
 {
     c1.clear();
     c2.clear();
@@ -14,8 +14,8 @@ void read_csv_columns(const std::string& filename, std::vector<double>& c1,
         in.read_header(io::ignore_extra_column, "Time", "E");           // Kun's data
         // in.read_header(io::ignore_extra_column, "Var1", "Var2");
 
-        double val1;
-        double val2;
+        float val1;
+        float val2;
         int count = 0;
 
     while (in.read_row(val1, val2)) 
@@ -46,9 +46,9 @@ void load_spectrum(const std::string& filename, spectrum_dataset& data)
     // freqsTHz(freqs.size());
     std::transform(data.freqs.begin(), data.freqs.end(), data.freqsTHz.begin(), [](auto x){return x * 1e-12;});
     // convert tensor data to vector data 
-    auto abs_result = torch::abs(data.fty).to(torch::kDouble);
+    auto abs_result = torch::abs(data.fty).to(torch::kFloat);
     data.fty_abs.resize(abs_result.size(0));
-    std::memcpy(data.fty_abs.data(), abs_result.data_ptr<double>(), abs_result.numel() * sizeof(double));
+    std::memcpy(data.fty_abs.data(), abs_result.data_ptr<float>(), abs_result.numel() * sizeof(float));
 }
 
 

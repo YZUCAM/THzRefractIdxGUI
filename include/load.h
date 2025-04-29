@@ -31,20 +31,20 @@ passed by reference, to increase the overall performance and reduce lagging
 
 struct spectrum_dataset 
 {
-    std::vector<double> times;
-    std::vector<double> Tm;
-    std::vector<double> freqs;
-    std::vector<double> freqsTHz;
+    std::vector<float> times;
+    std::vector<float> Tm;
+    std::vector<float> freqs;
+    std::vector<float> freqsTHz;
     torch::Tensor fty;
-    std::vector<double> fty_abs;
+    std::vector<float> fty_abs;
 };
 
 struct complex_transmission_dataset
 {
     torch::Tensor Tm1;
     torch::Tensor Tm2;
-    std::vector<double> Tm1_abs;
-    std::vector<double> Tm2_abs;
+    std::vector<float> Tm1_abs;
+    std::vector<float> Tm2_abs;
 };
 
 struct roi_dataset
@@ -52,9 +52,9 @@ struct roi_dataset
     torch::Tensor roi_Tm1;
     torch::Tensor roi_Tm2;
     torch::Tensor roi_w;
-    std::vector<double> roi_Tm1_abs;
-    std::vector<double> roi_Tm2_abs;
-    std::vector<double> roi_freqsTHz;
+    std::vector<float> roi_Tm1_abs;
+    std::vector<float> roi_Tm2_abs;
+    std::vector<float> roi_freqsTHz;
     torch::Tensor L;
 };
 
@@ -79,12 +79,12 @@ struct phase_dataset
 {
     torch::Tensor roi_measured_phase1;
     torch::Tensor roi_measured_phase2;
-    double controlled_phase_delay = 0;
+    float controlled_phase_delay = 0;
 };
 
 
-void read_csv_columns(const std::string& filename, std::vector<double>& c1,
-    std::vector<double>& c2, int skip_rows = 0);
+void read_csv_columns(const std::string& filename, std::vector<float>& c1,
+    std::vector<float>& c2, int skip_rows = 0);
 
 void load_spectrum(const std::string& filename, spectrum_dataset& data);
 

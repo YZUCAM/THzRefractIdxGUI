@@ -13,7 +13,7 @@ extern bool sam_delay_selected;
 extern bool first_load_plot;
 extern std::string selected_file_type;
 
-extern std::vector<double> pos;
+extern std::vector<float> pos;
 extern int skip_row;
 extern std::unordered_map<std::string, spectrum_dataset> spectrum_container;
 extern spectrum_dataset ref_spectrum;

@@ -81,7 +81,7 @@ void set_ROI_dataset(std::string from, std::string to)
 // ---------------key functions--------------------- //
 
 // manual implement unwrap function (NEED TOBE TEST) (PASS)
-torch::Tensor unwrap(const torch::Tensor& phase, double discontinuity) 
+torch::Tensor unwrap(const torch::Tensor& phase, float discontinuity) 
 {
     auto diff = phase.slice(0, 1) - phase.slice(0, 0, -1);
     diff = torch::cat({torch::zeros({1}, diff.options()), diff});  // same size
@@ -89,10 +89,10 @@ torch::Tensor unwrap(const torch::Tensor& phase, double discontinuity)
 
     for (int64_t i = 1; i < phase.size(0); ++i) 
     {
-        if (diff[i].item<double>() > discontinuity) 
+        if (diff[i].item<float>() > discontinuity) 
         {
             correction[i] = correction[i-1] - 2 * M_PI;
-        } else if (diff[i].item<double>() < -discontinuity) 
+        } else if (diff[i].item<float>() < -discontinuity) 
         {
             correction[i] = correction[i-1] + 2 * M_PI;
         } else 
@@ -118,7 +118,7 @@ void get_phase(std::string from, std::string to)
     }
     else
     {
-        torch::Tensor angle1 = torch::angle(c_t_dataset.Tm1.to(torch::kComplexDouble));  // convert it to double!
+        torch::Tensor angle1 = torch::angle(c_t_dataset.Tm1.to(torch::kComplexFloat));  // convert it to double!
         torch::Tensor phase1 = unwrap(angle1);
 
         if (idx_from >= 0 && idx_to <= phase1.size(0) && idx_from <= idx_to) 
@@ -132,7 +132,7 @@ void get_phase(std::string from, std::string to)
     }
     else
     {
-        torch::Tensor angle2 = torch::angle(c_t_dataset.Tm2.to(torch::kComplexDouble));  // convert it to double!
+        torch::Tensor angle2 = torch::angle(c_t_dataset.Tm2.to(torch::kComplexFloat));  // convert it to double!
         torch::Tensor phase2 = unwrap(angle2);
 
         if (idx_from >= 0 && idx_to <= phase2.size(0) && idx_from <= idx_to) 
@@ -215,14 +215,14 @@ void prepare_network_prams()
 
     int size = ROI_data.roi_Tm1.size(0);
 
-    cal_param.n1 = torch::ones({size}, torch::kDouble);
-    cal_param.k1 = torch::zeros({size}, torch::kDouble);
+    cal_param.n1 = torch::ones({size}, torch::kFloat);
+    cal_param.k1 = torch::zeros({size}, torch::kFloat);
 
-    cal_param.n2 = torch::ones({size}, torch::kDouble);
-    cal_param.k2 = torch::zeros({size}, torch::kDouble) * 0.01;
+    cal_param.n2 = torch::ones({size}, torch::kFloat);
+    cal_param.k2 = torch::zeros({size}, torch::kFloat) * 0.01;
 
-    cal_param.n3 = torch::ones({size}, torch::kDouble);
-    cal_param.k3 = torch::zeros({size}, torch::kDouble);
+    cal_param.n3 = torch::ones({size}, torch::kFloat);
+    cal_param.k3 = torch::zeros({size}, torch::kFloat);
 
     cal_param.L = ROI_data.L;
     cal_param.n_grad = true;
@@ -262,22 +262,22 @@ torch::Tensor ExtractIndexNetwork::forward()
 }
 
 
-std::pair<std::unordered_map<std::string, std::vector<double>>, std::vector<torch::Tensor>>
+std::pair<std::unordered_map<std::string, std::vector<float>>, std::vector<torch::Tensor>>
 train_step(
     ExtractIndexNetwork& model,
     torch::optim::Optimizer& optimizer,
     int max_epochs,
     torch::Device device)
 {
-    double train_loss = 0.0;
-    std::unordered_map<std::string, std::vector<double>> results;
+    float train_loss = 0.0;
+    std::unordered_map<std::string, std::vector<float>> results;
     results["train_loss"] = {};
 
     model.to(device);
 
     for (int epoch = 0; epoch < max_epochs; ++epoch) {
         torch::Tensor loss = model.forward();
-        train_loss = loss.item<double>();
+        train_loss = loss.item<float>();
 
         optimizer.zero_grad();
         loss.backward();
@@ -294,7 +294,7 @@ train_step(
 
     std::cout << "--------------------------------------------" << std::endl;
     std::cout << "Thickness: " 
-              << (model.L.cpu().detach().item<double>() * 1e3)
+              << (model.L.cpu().detach().item<float>() * 1e3)
               << " mm" << std::endl;
 
     // Return dictionary and important tensors (n2, k2, L)
@@ -312,7 +312,7 @@ train_step(
 // Extraction button call back function
 void extraction_freestanding(std::string lr, std::string max_ep, std::string from, std::string to)
 {
-    double lr_ = std::stod(lr);
+    float lr_ = std::stod(lr);
     int max_epochs = std::stoi(max_ep);
     torch::Device device(torch::kCPU);
 

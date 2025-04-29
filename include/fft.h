@@ -4,10 +4,10 @@
 #include <constant.h>
 #include <algorithm>
 
-torch::Tensor fft(std::vector<double> v1);
+torch::Tensor fft(std::vector<float> v1);
 
-std::vector<double> linspace(double start, double end, size_t num);
+std::vector<float> linspace(float start, float end, size_t num);
 
-std::vector<double> construct_freqs(std::vector<double> t);
+std::vector<float> construct_freqs(std::vector<float> t);
 
-std::vector<double> pos2time(std::vector<double> t);
+std::vector<float> pos2time(std::vector<float> t);

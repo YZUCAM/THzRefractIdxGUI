@@ -11,7 +11,7 @@ torch::Tensor get_complex_transmission(const spectrum_dataset& s1, const spectru
 
 void set_ROI_dataset(std::string from, std::string to);
 
-torch::Tensor unwrap(const torch::Tensor& phase, double discontinuity = M_PI);
+torch::Tensor unwrap(const torch::Tensor& phase, float discontinuity = M_PI);
 
 void get_phase(std::string from, std::string to);
 
@@ -53,7 +53,7 @@ class ExtractIndexNetwork : public torch::nn::Module
 // TORCH_MODULE(ExtractIndexNetwork);
 
 
-std::pair<std::unordered_map<std::string, std::vector<double>>, std::vector<torch::Tensor>> 
+std::pair<std::unordered_map<std::string, std::vector<float>>, std::vector<torch::Tensor>> 
 train_step(ExtractIndexNetwork& model,torch::optim::Optimizer& optimizer, int max_epochs, torch::Device device);
 
 

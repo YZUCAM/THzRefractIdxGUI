@@ -4,7 +4,7 @@
 // #include "global_logger.h"
 
 
-std::vector<double> pos;
+std::vector<float> pos;
 int skip_row = 0;
 std::unordered_map<std::string, spectrum_dataset> spectrum_container;
 spectrum_dataset ref_spectrum;
@@ -71,18 +71,18 @@ void drawFileDialogGui()
             {
                 c_t_dataset.Tm1 = get_complex_transmission(spectrum_container["sam"], spectrum_container["ref"]);
                 // std::cout << "Tm1 calculated: " << Tm1[1] << std::endl;
-                auto abs_Tm1 = torch::abs(c_t_dataset.Tm1).to(torch::kDouble);
+                auto abs_Tm1 = torch::abs(c_t_dataset.Tm1).to(torch::kFloat);
                 c_t_dataset.Tm1_abs.resize(abs_Tm1.size(0));
-                std::memcpy(c_t_dataset.Tm1_abs.data(), abs_Tm1.data_ptr<double>(), abs_Tm1.numel() * sizeof(double));
+                std::memcpy(c_t_dataset.Tm1_abs.data(), abs_Tm1.data_ptr<float>(), abs_Tm1.numel() * sizeof(float));
             }
 
             if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sam_delay"].Tm.empty())) 
             {
                 c_t_dataset.Tm2 = get_complex_transmission(spectrum_container["sam_delay"], spectrum_container["ref"]);
                 // std::cout << "Tm2 calculated: " << Tm2[1] << std::endl;
-                auto abs_Tm2 = torch::abs(c_t_dataset.Tm2).to(torch::kDouble);
+                auto abs_Tm2 = torch::abs(c_t_dataset.Tm2).to(torch::kFloat);
                 c_t_dataset.Tm2_abs.resize(abs_Tm2.size(0));
-                std::memcpy(c_t_dataset.Tm2_abs.data(), abs_Tm2.data_ptr<double>(), abs_Tm2.numel() * sizeof(double));
+                std::memcpy(c_t_dataset.Tm2_abs.data(), abs_Tm2.data_ptr<float>(), abs_Tm2.numel() * sizeof(float));
             }
 
         }
