@@ -11,7 +11,8 @@ void read_csv_columns(const std::string& filename, std::vector<double>& c1,
     try 
     {
         io::CSVReader<2> in(filename);
-        in.read_header(io::ignore_extra_column, "Var1", "Var2");
+        in.read_header(io::ignore_extra_column, "Time", "E");           // Kun's data
+        // in.read_header(io::ignore_extra_column, "Var1", "Var2");
 
         double val1;
         double val2;
@@ -38,7 +39,8 @@ void load_spectrum(const std::string& filename, spectrum_dataset& data)
     // skip_row and pos are global variables no need define.
     read_csv_columns(filename, pos, data.Tm, skip_row);
     data.fty = fft(data.Tm);
-    data.times = pos2time(pos);
+    data.times = pos2time(pos);              // this is direct read pos data,  USE KUN's DATA, the time original is ps now use this function convert to s(NEED TO FIX IN FUTURE)
+    // data.times = pos;                           // this is direct read time data, time unit is s
     data.freqs = construct_freqs(data.times);
     data.freqsTHz.resize(data.freqs.size());
     // freqsTHz(freqs.size());

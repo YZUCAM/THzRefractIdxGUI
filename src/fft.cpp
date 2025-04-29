@@ -48,7 +48,9 @@ std::vector<double> construct_freqs(std::vector<double> t)
 std::vector<double> pos2time(std::vector<double> t)
 {
     std::vector<double> times(t.size());
-    std::transform(t.begin(), t.end(), times.begin(), [](double x){return x * 2e-3 / C;});
+    // std::transform(t.begin(), t.end(), times.begin(), [](double x){return x * 2e-3 / C;});  // position here is mm 
+
+    std::transform(t.begin(), t.end(), times.begin(), [](double x){return x * 1e-12;});  // temp use for Kun's data, the time is ps here need to convert to s
     
     return times;
 }
