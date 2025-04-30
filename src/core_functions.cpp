@@ -298,6 +298,7 @@ void clear_data()
     c_t_dataset.Tm2_abs.clear();
 
     spectrum_container.clear();
+
 }
 
 
@@ -422,6 +423,11 @@ train_step(
 // Extraction button call back function (basic case known thickness single layer freestanding)
 void extraction_freestanding(std::string lr, std::string max_ep, std::string from, std::string to)
 {   
+    if (cal_param.L.numel() == 0)
+    {
+        logger.Log(DataLogger::ERROR, "Model Parameters are empty, please set parameters.");
+        return;
+    }
     if (cal_param.L.item<float>()== 0)
     {
         logger.Log(DataLogger::ERROR, "Opt-thickness should not be 0.");
@@ -429,7 +435,9 @@ void extraction_freestanding(std::string lr, std::string max_ep, std::string fro
     }
     isTraining = true;
 
-    float lr_ = std::stod(lr);
+    // std::cout<< "enter extraction_freestanding" << std::endl;
+
+    float lr_ = std::stof(lr);
     int max_epochs = std::stoi(max_ep);
     torch::Device device(torch::kCPU);
 

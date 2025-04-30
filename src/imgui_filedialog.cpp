@@ -64,13 +64,14 @@ void drawFileDialogGui()
                 logger.Log(DataLogger::ERROR, message);
                 ImGuiFileDialog::Instance()->Close();
             }
-            first_load_plot = true;
+            
 
             // check if container has ref and sam and sam_delay
             if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sam"].Tm.empty())) 
             {
+                // TODO AFTER CLEAR DATA, LOAD NEW DATA NO TM1_abs calculation results.
                 c_t_dataset.Tm1 = get_complex_transmission(spectrum_container["sam"], spectrum_container["ref"]);
-                // std::cout << "Tm1 calculated: " << Tm1[1] << std::endl;
+                
                 auto abs_Tm1 = torch::abs(c_t_dataset.Tm1).to(torch::kFloat);
                 c_t_dataset.Tm1_abs.resize(abs_Tm1.size(0));
                 std::memcpy(c_t_dataset.Tm1_abs.data(), abs_Tm1.data_ptr<float>(), abs_Tm1.numel() * sizeof(float));
@@ -86,6 +87,7 @@ void drawFileDialogGui()
             }
 
         }
+        first_load_plot = true;
         // close
         ImGuiFileDialog::Instance()->Close();
     }

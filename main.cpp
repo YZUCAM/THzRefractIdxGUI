@@ -457,6 +457,8 @@ int main(int, char**)
             //extraction refractive index interface
             stopFlag = false;
             isTraining = true;
+            //initial model parameters to avoid crash
+            prepare_network_prams();
             if (trainingThread.joinable()){
                 trainingThread.join();}
             trainingThread = std::thread(extraction_freestanding, std::string(learning_rate), std::string(iteration_num), std::string(ROI_from), std::string(ROI_to));
@@ -476,20 +478,26 @@ int main(int, char**)
         }
         ImGui::Columns(1); // back to single column
         ImGui::Separator(); 
-        if (isTraining) {
+
+        // if (isTraining) {
         ImGui::ProgressBar(progress, ImVec2(400,20), (std::to_string((int)(progress*100)) + "%").c_str());
-        }
+        // }
         
         // display switch
         ImGui::RadioButton("Time Domain", TimeFreqSelect == 0); if (ImGui::IsItemClicked()) {TimeFreqSelect = 0; first_load_plot = true;}
         ImGui::SameLine();
         ImGui::RadioButton("Freq Domain", TimeFreqSelect == 1); if (ImGui::IsItemClicked()) {TimeFreqSelect = 1; first_load_plot = true;}
 
+        // clear all data
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 160, right_window_size.y - (int)(right_window_size.y * 190 / 720) - 121));
         if (ImGui::Button("Clear ALL DATA"))
         {
             // clear all stored data
             clear_data();
+            roi_selector = false;
+            ref_selected = false;
+            sam_selected = false;
+            sam_delay_selected = false;
         } 
 
         // DataLogger Section
@@ -517,7 +525,7 @@ int main(int, char**)
         ImGui::SetCursorPos(ImVec2(10, right_window_size.y - 28));
         ImGui::Text("App FPS: %.1f", io.Framerate);
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 200, right_window_size.y - 28));
-        ImGui::Text("By Dr. Yi  V: 0.1.5");
+        ImGui::Text("By Dr. Yi  V: 0.1.6");
         ImGui::End();
 
         // Rendering
