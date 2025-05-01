@@ -326,7 +326,7 @@ void prepare_network_prams()
     cal_param.L = ROI_data.L;
     cal_param.n_grad = true;
     cal_param.L_grad = false;
-    cal_param.FP = true;
+    cal_param.FP = false;
 
 }
 
