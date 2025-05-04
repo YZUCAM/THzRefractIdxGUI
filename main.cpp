@@ -47,6 +47,7 @@ bool sam_selected = false;
 bool sam_chip_selected = false;
 bool first_load_plot = false;
 bool roi_selector = false;
+bool know_thickness = false;
 
 std::string selected_file_type = "";
 std::string point = "";
@@ -126,9 +127,12 @@ int main(int, char**)
     int mode = 0;
     int TimeFreqSelect = 0;
 
-    char thick_from[128] = "";
-    char thick_to[128] = "";
-    char thick_step[128] = "";
+    // char thick_from[128] = "";
+    // char thick_to[128] = "";
+    // char thick_step[128] = "";
+    char chip_gp[128] = "0";
+    char sam_gp[128] = "0";
+    char sam_chip_gp[128] = "0";
     char phase_delay[128] = "";
     char ROI_from[128] = "";
     char ROI_to[128] = "";
@@ -136,7 +140,7 @@ int main(int, char**)
     char iteration_num[128] = "";
     // char L[128] = "";
     
-    char OptThickness[128] = "0";
+    char Thickness[128] = "0";
     
 
 
@@ -304,6 +308,9 @@ int main(int, char**)
         // TODO
 
 
+        // check box for know and unknow thickness
+        ImGui::SetCursorPos(ImVec2(10, 200));
+        ImGui::Checkbox("Known Sample Thickness", &know_thickness);
 
         // Select File Section
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 125, 30));
@@ -360,6 +367,7 @@ int main(int, char**)
         CircleIndicator(ref_selected, "Ref");
         ImGui::SameLine();
         CircleIndicator(sam_selected, "Sam");
+        CircleIndicator(chip_selected, "Chip");
         CircleIndicator(sam_chip_selected, "Sam+Chip");
         ImVec2 circle_indicator_size_default = ImGui::GetItemRectSize();
 
@@ -379,72 +387,105 @@ int main(int, char**)
         ImGui::EndGroup();
 
 
+
         // Thickness Parameters Setting Section
         ImGui::Separator();
-        ImGui::Text("Thickness Optimization");
-        ImVec2 text_size_default = ImGui::GetItemRectSize();
-        ImGui::SetNextItemWidth(80); 
-        ImGui::InputTextWithHint("##t1", "From", thick_from, IM_ARRAYSIZE(thick_from));
+        ImGui::Text("Global Phases (Unit ps)");
+        // ImVec2 text_size_default = ImGui::GetItemRectSize();
+        ImGui::Text("Chip     ");
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(80); 
-        ImGui::InputTextWithHint("##t2", "To", thick_to, IM_ARRAYSIZE(thick_to));
+        ImGui::Text("Sample   ");
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(80); 
-        ImGui::InputTextWithHint("##t3", "Step", thick_step, IM_ARRAYSIZE(thick_step));
+        ImGui::Text("Sample+Chip");
+
+        ImGui::SetNextItemWidth(90); 
+        ImGui::InputTextWithHint("##t1", "Chip", chip_gp, IM_ARRAYSIZE(chip_gp));
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(90); 
+        ImGui::InputTextWithHint("##t2", "Sam", sam_gp, IM_ARRAYSIZE(sam_gp));
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(90); 
+        ImGui::InputTextWithHint("##t3", "Sam+Chip", sam_chip_gp, IM_ARRAYSIZE(sam_chip_gp));
         ImGui::SameLine();
         ImGui::Text(point.c_str());
         ImGui::SameLine();
         if (ImGui::Button(" Init "))
         {
             // 1. initial thickness info data
-            init_thickness_scan(std::string(thick_from), std::string(thick_to), std::string(thick_step));
+            // init_thickness_scan(std::string(chip_gp), std::string(sam_gp), std::string(sam_chip_gp));
+            // init the global phase for three transmission spectrum 
         }
-        ImGui::SetCursorPos(ImVec2(10, 265));
+        ImGui::SetCursorPos(ImVec2(10, 310));
         // ImGui::Text((std::string("Optimized Thickness: ") + std::string(OptThickness)).c_str());
-        ImGui::Text("Optimized Thickness: ");
+        ImGui::Text("Known Thickness:");
         ImGui::SameLine();
         ImGui::SetNextItemWidth(150); 
 
         // REMARK: use this way to modify the OptThickness in the real time.
         // strncpy(OptThickness, "100", sizeof(OptThickness));
 
-        ImGui::InputTextWithHint("##t8", "Thickness", OptThickness, IM_ARRAYSIZE(OptThickness));
-        if (ImGui::Button(" Use Opt-Thickness ", ImVec2(188, 40)))
-        {
-            //select optimized thickness interface
-            // ROI_data.L = torch::Tensor(std::stod(std::string(OptThickness)));
-            ROI_data.L = torch::tensor(std::stod(std::string(OptThickness)), torch::dtype(torch::kFloat));
-            logger.Log(DataLogger::INFO, "Thickness is set to: " + std::string(OptThickness));
-        }
+        
         ImGui::SameLine();
-        ImGui::BeginDisabled(isTraining);
-        if (ImGui::Button(" Find Thickness ", ImVec2(188, 40)))
+        ImGui::SetNextItemWidth(60);
+        ImGui::InputTextWithHint("##t8", "Thickness", Thickness, IM_ARRAYSIZE(Thickness));
+        ImGui::SameLine();
+        ImGui::Text("(mm)");
+        ImGui::SameLine();
+        if (ImGui::Button(" confirm "))
         {
-            std::cout << "click find thickness button" << std::endl;
-            //  start do recursive finding thickness algo
-            stopFlag = false;
-            isTraining = true;
-            if (thicknessThread.joinable()){
-                thicknessThread.join();}
-            thicknessThread = std::thread(extraction_thickness_freestanding, std::string(learning_rate), std::string(iteration_num), std::string(ROI_from), std::string(ROI_to));
-            // trainingThread.detach();
-            first_load_plot = true;
+            ROI_data.L = torch::tensor(std::stof(std::string(Thickness)), torch::dtype(torch::kFloat));
+            logger.Log(DataLogger::INFO, "Thickness is set to: " + std::string(Thickness));
         }
-        ImGui::EndDisabled();
 
-
-        // Extract Refractive Idx Section
-        ImGui::Separator();
-        ImGui::Text("Extract Complex Refractive Index");
         // controlled phase delay
         ImGui::SetNextItemWidth(180); 
-        ImGui::InputTextWithHint("##t9", "Phase Delay", phase_delay, IM_ARRAYSIZE(phase_delay));
+        ImGui::InputTextWithHint("##t9", "Chip Thickness(mm)", phase_delay, IM_ARRAYSIZE(phase_delay));
         ImGui::SameLine();
         if (ImGui::Button(" Set Phase Delay "))
         {
             induced_phase_delay = std::stof(std::string(phase_delay));
             logger.Log(DataLogger::INFO, "Set introduced phase delay: " + std::string(phase_delay));
         }
+
+        // ImGui::Columns(2,"##c1");
+        // ImGui::BeginGroup();
+        // // controlled phase delay
+        // ImGui::SetNextItemWidth(180); 
+        // ImGui::InputTextWithHint("##t9", "Chip Thickness(mm)", phase_delay, IM_ARRAYSIZE(phase_delay));
+        // // ImGui::SameLine();
+        // if (ImGui::Button(" Set Phase Delay "))
+        // {
+        //     induced_phase_delay = std::stof(std::string(phase_delay));
+        //     logger.Log(DataLogger::INFO, "Set introduced phase delay: " + std::string(phase_delay));
+        // }
+        // ImGui::EndGroup();
+        // ImGui::NextColumn();
+
+        
+        // ImGui::Columns(1);
+
+
+
+        // ImGui::BeginDisabled(isTraining);
+        // if (ImGui::Button(" Find Thickness ", ImVec2(188, 40)))
+        // {
+        //     std::cout << "click find thickness button" << std::endl;
+        //     //  start do recursive finding thickness algo
+        //     stopFlag = false;
+        //     isTraining = true;
+        //     if (thicknessThread.joinable()){
+        //         thicknessThread.join();}
+        //     thicknessThread = std::thread(extraction_thickness_freestanding, std::string(learning_rate), std::string(iteration_num), std::string(ROI_from), std::string(ROI_to));
+        //     // trainingThread.detach();
+        //     first_load_plot = true;
+        // }
+        // ImGui::EndDisabled();
+
+
+        // Extract Refractive Idx Section
+        ImGui::Separator();
+        ImGui::Text("Extract Complex Refractive Index");
+        
         // Select region of interest
         ImGui::Text("Select region of interest: ");
         ImGui::BeginGroup();
@@ -476,7 +517,7 @@ int main(int, char**)
         // std::cout << ROI_data.L << std::endl;   //[ CPUDoubleType{} ]
 
         // ImGui::SetCursorPos(ImVec2(30, 332));
-        ImGui::Columns(2);
+        ImGui::Columns(2,"##c2");
         ImGui::BeginGroup();
         ImGui::SetNextItemWidth(150); 
         ImGui::InputTextWithHint("##t6", "Learning rate", learning_rate, IM_ARRAYSIZE(learning_rate));
@@ -512,19 +553,23 @@ int main(int, char**)
         }
         ImGui::Columns(1); // back to single column
         ImGui::Separator(); 
+        ImGui::Text("Optimized Sample Thickness: ");
+        // ImGui::SameLine();
+        // add thickness display panel
 
+        ImGui::Separator(); 
         // if (isTraining) {
         ImGui::ProgressBar(progress, ImVec2(400,20), (std::to_string((int)(progress*100)) + "%").c_str());
         // }
         
         // display switch
         ImGui::RadioButton("Time Domain", TimeFreqSelect == 0); if (ImGui::IsItemClicked()) {TimeFreqSelect = 0; first_load_plot = true;}
-        ImGui::SameLine();
+        // ImGui::SameLine();
         ImGui::RadioButton("Freq Domain", TimeFreqSelect == 1); if (ImGui::IsItemClicked()) {TimeFreqSelect = 1; first_load_plot = true;}
 
 
         // clear all data
-        ImGui::SetCursorPos(ImVec2(right_window_size.x - 160, right_window_size.y - (int)(right_window_size.y * 190 / 720) - 121));
+        ImGui::SetCursorPos(ImVec2(right_window_size.x - 155, right_window_size.y - (int)(right_window_size.y * 180 / 720) - 100));
         if (ImGui::Button("Clear ALL DATA"))
         {
             // clear all stored data
@@ -538,18 +583,18 @@ int main(int, char**)
 
 
         // DataLogger Section
-        ImGui::SetCursorPos(ImVec2(right_window_size.x - 105, right_window_size.y - (int)(right_window_size.y * 190 / 720) - 61));  // y offset 26
+        ImGui::SetCursorPos(ImVec2(right_window_size.x - 105, right_window_size.y - (int)(right_window_size.y * 180 / 720) - 61));  // y offset 26
         if (ImGui::Button("Clear Log")) 
         {
             logger.ClearLog();
         }
         // program log output section
-        ImGui::SetCursorPos(ImVec2(10, right_window_size.y - (int)(right_window_size.y * 190 / 720) - 55)); // y offset 20
+        ImGui::SetCursorPos(ImVec2(10, right_window_size.y - (int)(right_window_size.y * 180 / 720) - 55)); // y offset 20
         ImGui::Text("Program log output:");
         // ImGui::SetCursorPos(ImVec2(10, right_window_size.y - (int)(right_window_size.y * 230 / 720)));
-        ImGui::SetCursorPos(ImVec2(10, right_window_size.y - (int)(right_window_size.y * 190 / 720) - 35));
+        ImGui::SetCursorPos(ImVec2(10, right_window_size.y - (int)(right_window_size.y * 180 / 720) - 35));
         // Display the log buffer content in a scrollable text area
-        ImGui::BeginChild("LogArea", ImVec2(right_window_size.x-10, (int)(right_window_size.y * 190 / 720)), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+        ImGui::BeginChild("LogArea", ImVec2(right_window_size.x-10, (int)(right_window_size.y * 180 / 720)), true, ImGuiWindowFlags_AlwaysVerticalScrollbar);
         auto logBuffer = logger.GetLogBuffer();
         for (const auto& logEntry : logBuffer) 
         {

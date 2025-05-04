@@ -12,6 +12,7 @@ extern std::atomic<bool> stopFlag;
 
 extern DataLogger logger;
 
+extern bool know_thickness;
 extern bool ref_selected;
 extern bool chip_selected;
 extern bool sam_selected;
