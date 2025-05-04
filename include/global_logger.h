@@ -13,15 +13,16 @@ extern std::atomic<bool> stopFlag;
 extern DataLogger logger;
 
 extern bool ref_selected;
+extern bool chip_selected;
 extern bool sam_selected;
-extern bool sam_delay_selected;
+extern bool sam_chip_selected;
 extern bool first_load_plot;
 extern std::string selected_file_type;
 extern std::string point;
 extern float induced_phase_delay;
 
 extern std::vector<float> pos;
-extern int skip_row;
+// extern int skip_row;
 extern std::unordered_map<std::string, spectrum_dataset> spectrum_container;
 extern spectrum_dataset ref_spectrum;
 extern spectrum_dataset sam_spectrum;

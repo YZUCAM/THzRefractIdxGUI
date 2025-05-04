@@ -22,6 +22,9 @@ passed by reference, to increase the overall performance and reduce lagging
 
 #pragma once
 #include <iostream>
+#include <fstream>
+#include <sstream>
+#include <cstdio>
 #include <string>
 #include <vector>
 #include <csv.h>
@@ -41,17 +44,21 @@ struct spectrum_dataset
 
 struct complex_transmission_dataset
 {
+    torch::Tensor Tm0;
     torch::Tensor Tm1;
     torch::Tensor Tm2;
+    std::vector<float> Tm0_abs;
     std::vector<float> Tm1_abs;
     std::vector<float> Tm2_abs;
 };
 
 struct roi_dataset
 {
+    torch::Tensor roi_Tm0;      // for chip
     torch::Tensor roi_Tm1;
     torch::Tensor roi_Tm2;
     torch::Tensor roi_w;
+    std::vector<float> roi_Tm0_abs;
     std::vector<float> roi_Tm1_abs;
     std::vector<float> roi_Tm2_abs;
     std::vector<float> roi_freqsTHz;
@@ -96,8 +103,11 @@ struct thickness_finder
 };
 
 void read_csv_columns(const std::string& filename, std::vector<float>& c1,
-    std::vector<float>& c2, int skip_rows = 0);
+    std::vector<float>& c2);
 
 void load_spectrum(const std::string& filename, spectrum_dataset& data);
+
+void load_dataset_spectrum(const std::string& filename, spectrum_dataset& data1, 
+    spectrum_dataset& data2, spectrum_dataset& data3, spectrum_dataset& data4);
 
 

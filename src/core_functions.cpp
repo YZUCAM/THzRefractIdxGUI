@@ -58,24 +58,38 @@ void set_ROI_dataset(std::string from, std::string to)
     
         // clear roi_dataset container data
         ROI_data.roi_freqsTHz.clear();
+        ROI_data.roi_Tm0_abs.clear();
         ROI_data.roi_Tm1_abs.clear();
         ROI_data.roi_Tm2_abs.clear();
         // tensor part will be automatically rewrite so no need handle it manually
     
+        // need to process later for adding global phase term!!!
         torch::Tensor w = construct_w(spectrum_container["ref"]);
-    
+
+        //seperate select w_roi and freqsTHz
+        if (idx_from >= 0 && idx_to <= spectrum_container["ref"].fty.size(0) && idx_from <= idx_to) 
+        {
+            ROI_data.roi_w = w.slice(0, idx_from, idx_to).clone();
+            // freqsTHZ need reshape
+            std::copy(spectrum_container["ref"].freqsTHz.begin() + idx_from, spectrum_container["ref"].freqsTHz.begin() + idx_to, std::back_inserter(ROI_data.roi_freqsTHz));
+        }
+        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm0.size(0) && idx_from <= idx_to) 
+        {
+            // tensor data
+            ROI_data.roi_Tm0 = c_t_dataset.Tm0.slice(0, idx_from, idx_to).clone();
+        }
         if (idx_from >= 0 && idx_to <= c_t_dataset.Tm1.size(0) && idx_from <= idx_to) 
         {
             // tensor data
             ROI_data.roi_Tm1 = c_t_dataset.Tm1.slice(0, idx_from, idx_to).clone();
-            ROI_data.roi_w = w.slice(0, idx_from, idx_to).clone();
-    
-            // freqsTHZ need reshape
-            std::copy(spectrum_container["ref"].freqsTHz.begin() + idx_from, spectrum_container["ref"].freqsTHz.begin() + idx_to, std::back_inserter(ROI_data.roi_freqsTHz));
         }
         if (idx_from >= 0 && idx_to <= c_t_dataset.Tm2.size(0) && idx_from <= idx_to) 
         {
             ROI_data.roi_Tm2 = c_t_dataset.Tm2.slice(0, idx_from, idx_to).clone();
+        }
+        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm0_abs.size() && idx_from <= idx_to)
+        {
+            std::copy(c_t_dataset.Tm0_abs.begin() + idx_from, c_t_dataset.Tm0_abs.begin() + idx_to, std::back_inserter(ROI_data.roi_Tm0_abs));
         }
         if (idx_from >= 0 && idx_to <= c_t_dataset.Tm1_abs.size() && idx_from <= idx_to)
         {
@@ -85,8 +99,7 @@ void set_ROI_dataset(std::string from, std::string to)
         {
             std::copy(c_t_dataset.Tm2_abs.begin() + idx_from, c_t_dataset.Tm2_abs.begin() + idx_to, std::back_inserter(ROI_data.roi_Tm2_abs));
         }
-    }
-    
+    }   
 }
 
 // robust checked.
@@ -260,12 +273,14 @@ torch::Tensor tensor_cal_euclidean_dist(
 
 // ------------------------------------------------- //
 
-
+// BUG: No calculation, click clear data it crash
 void clear_data()
 {
+    ROI_data.roi_Tm0_abs.clear();
     ROI_data.roi_Tm1_abs.clear();
     ROI_data.roi_Tm2_abs.clear();
     ROI_data.roi_freqsTHz.clear();
+    ROI_data.roi_Tm0 = torch::empty({0});
     ROI_data.roi_Tm1 = torch::empty({0});
     ROI_data.roi_Tm2 = torch::empty({0});
     ROI_data.roi_w = torch::empty({0});
@@ -292,8 +307,10 @@ void clear_data()
     thickness_info.thickarry.clear();
     thickness_info.thick_error.clear();
 
+    c_t_dataset.Tm0 = torch::empty({0});
     c_t_dataset.Tm1 = torch::empty({0});
     c_t_dataset.Tm2 = torch::empty({0});
+    c_t_dataset.Tm0_abs.clear();
     c_t_dataset.Tm1_abs.clear();
     c_t_dataset.Tm2_abs.clear();
 

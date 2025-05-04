@@ -2,6 +2,12 @@
 //                                              By Dr. Yi Zhu
 //                                                 23-Apr-2025
 
+// second version change backend function
+// TODO add FP mode selection button (check box)
+// change second plot to linear plot
+// second plot set as amplitude fitting data
+// fourth plot set as phase fitting data.
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -34,12 +40,13 @@ DataLogger logger(maxLogSize);    //log_buffer size
 // std::vector<double> pos;
 // int skip_row = 0;
 
+// global variable used in GUI
 bool ref_selected = false;
+bool chip_selected = false;
 bool sam_selected = false;
-bool sam_delay_selected = false;
+bool sam_chip_selected = false;
 bool first_load_plot = false;
 bool roi_selector = false;
-
 
 std::string selected_file_type = "";
 std::string point = "";
@@ -49,12 +56,12 @@ float induced_phase_delay;
 // float progress = 0.0;
 
 
-
-
 static void glfw_error_callback(int error, const char* description)
 {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
+
+
 
 int main(int, char**)
 {
@@ -115,7 +122,7 @@ int main(int, char**)
     
 
 
-    // state variable
+    // GUI variables
     int mode = 0;
     int TimeFreqSelect = 0;
 
@@ -158,13 +165,13 @@ int main(int, char**)
         int windowWidth, windowHeight;
         glfwGetFramebufferSize(window, &windowWidth, &windowHeight);   // get glfwwindow size for automatically resize sub UI under this window
 
+
         // First Panel in the Left
         ImGui::SetNextWindowPos(ImVec2(0,0));
         ImGui::SetNextWindowSize(ImVec2((int)((windowWidth - right_window_width)/2), (int)windowHeight/2));
         ImGui::Begin("Plot1", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);     // Create a window called "Hello, world!" and append into it.
         ImVec2 plot1_size = ImGui::GetContentRegionAvail(); 
         if (first_load_plot){ImPlot::SetNextAxesToFit();}
-
         if (TimeFreqSelect == 0)
         {
             if (ImPlot::BeginPlot("Time Domain THz Spectrum", plot1_size)) 
@@ -173,7 +180,9 @@ int main(int, char**)
                 ImPlot::SetupLegend(ImPlotLocation_NorthEast);
                 ImPlot::PlotLine("Ref", spectrum_container["ref"].times.data(), spectrum_container["ref"].Tm.data(), spectrum_container["ref"].Tm.size());
                 // if (!spectrum_container["ref"].times.empty()){}
+                ImPlot::PlotLine("Chip", spectrum_container["chip"].times.data(), spectrum_container["chip"].Tm.data(), spectrum_container["chip"].Tm.size());
                 ImPlot::PlotLine("Sam", spectrum_container["sam"].times.data(), spectrum_container["sam"].Tm.data(), spectrum_container["sam"].Tm.size());
+                ImPlot::PlotLine("Sam+Chip", spectrum_container["sam_chip"].times.data(), spectrum_container["sam_chip"].Tm.data(), spectrum_container["sam_chip"].Tm.size());
                 ImPlot::EndPlot();
             }    
     
@@ -186,14 +195,17 @@ int main(int, char**)
                 ImPlot::SetupLegend(ImPlotLocation_NorthEast);
                 ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
                 ImPlot::PlotLine("Ref", spectrum_container["ref"].freqsTHz.data(), spectrum_container["ref"].fty_abs.data(), spectrum_container["ref"].fty_abs.size());
+                ImPlot::PlotLine("Chip", spectrum_container["chip"].freqsTHz.data(), spectrum_container["chip"].fty_abs.data(), spectrum_container["chip"].fty_abs.size());
                 ImPlot::PlotLine("Sam", spectrum_container["sam"].freqsTHz.data(), spectrum_container["sam"].fty_abs.data(), spectrum_container["sam"].fty_abs.size());
+                ImPlot::PlotLine("Sam+Chip", spectrum_container["sam_chip"].freqsTHz.data(), spectrum_container["sam_chip"].fty_abs.data(), spectrum_container["sam_chip"].fty_abs.size());
                 ImPlot::EndPlot();
             }    
     
         }
-        
         // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
         ImGui::End();
+
+    
 
         // Second Panel in the Left
         ImGui::SetNextWindowPos(ImVec2((int)(windowWidth - right_window_width)/2, 0));
@@ -208,18 +220,21 @@ int main(int, char**)
             ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
             if (roi_selector)
             {
-                // BUG! exist automaticaly!!!
-                ImPlot::PlotLine("Tm1", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm1_abs.data(), ROI_data.roi_Tm1_abs.size());
-                ImPlot::PlotLine("Tm2", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm2_abs.data(), ROI_data.roi_Tm2_abs.size());
+                ImPlot::PlotLine("Tm_chip", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm0_abs.data(), ROI_data.roi_Tm0_abs.size());
+                ImPlot::PlotLine("Tm_sam", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm1_abs.data(), ROI_data.roi_Tm1_abs.size());
+                ImPlot::PlotLine("Tm_sam_chip", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm2_abs.data(), ROI_data.roi_Tm2_abs.size());
             }
             else
             {
-                ImPlot::PlotLine("Tm1", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm1_abs.data(), c_t_dataset.Tm1_abs.size());
-                ImPlot::PlotLine("Tm2", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm2_abs.data(), c_t_dataset.Tm2_abs.size());
+                ImPlot::PlotLine("Tm_chip", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm0_abs.data(), c_t_dataset.Tm0_abs.size());
+                ImPlot::PlotLine("Tm_sam", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm1_abs.data(), c_t_dataset.Tm1_abs.size());
+                ImPlot::PlotLine("Tm_sam_chip", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm2_abs.data(), c_t_dataset.Tm2_abs.size());
             }
             ImPlot::EndPlot();
         }    
         ImGui::End();
+
+
 
         // Third Panel in the Left
         ImGui::SetNextWindowPos(ImVec2(0, (int)windowHeight/2));
@@ -249,8 +264,9 @@ int main(int, char**)
             // ImPlot::PlotLine("n", ROI_data.roi_freqsTHz.data(), cri.n2.data(), cri.n2.size());
             ImPlot::EndPlot();
         }         
-
         ImGui::End();
+
+
 
         // Fourth Panel in the Left
         ImGui::SetNextWindowPos(ImVec2((int)(windowWidth - right_window_width)/2, (int)windowHeight/2));
@@ -258,16 +274,20 @@ int main(int, char**)
         ImGui::Begin("Plot4", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);                
         ImVec2 plot4_size = ImGui::GetContentRegionAvail(); 
         if (first_load_plot){ImPlot::SetNextAxesToFit();}
-        if (ImPlot::BeginPlot("Thickness Error", plot4_size)) 
+        if (ImPlot::BeginPlot("Transmission Phase", plot4_size)) 
         {
-            ImPlot::SetupAxes("Thickness (m)", "Error (a.u.)");
+            ImPlot::SetupAxes("Frequency (Hz)", "Phase (rad)");
             ImPlot::SetupLegend(ImPlotLocation_NorthEast);
-            ImPlot::PlotLine("t", thickness_info.thickarry.data(), thickness_info.thick_error.data(), thickness_info.thick_error.size());
+            ImPlot::PlotLine("Phi_chip", thickness_info.thickarry.data(), thickness_info.thick_error.data(), thickness_info.thick_error.size());
+            // ImPlot::PlotLine("Phi_sam", thickness_info.thickarry.data(), thickness_info.thick_error.data(), thickness_info.thick_error.size());
+            // ImPlot::PlotLine("Phi_sam_chip", thickness_info.thickarry.data(), thickness_info.thick_error.data(), thickness_info.thick_error.size());
             ImPlot::EndPlot();
         }         
 
         ImGui::End();
         first_load_plot = false;
+
+
 
         // Right Pannel
         ImGui::SetNextWindowPos(ImVec2((int)(windowWidth - right_window_width), 0));
@@ -282,6 +302,7 @@ int main(int, char**)
         // ImGui::Image();
 
         // TODO
+
 
 
         // Select File Section
@@ -304,20 +325,32 @@ int main(int, char**)
                     ImGui::CloseCurrentPopup();  // Close modal after selection
                 }
                 ImGui::SameLine();
+                if (ImGui::Button("Delay Chip")) 
+                {
+                    selected_file_type =  "chip"; 
+                    ImGui::CloseCurrentPopup();  // Close modal after selection
+                }
+                ImGui::SameLine();
                 if (ImGui::Button("Sample")) 
                 {
                     selected_file_type =  "sam"; 
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Sample + Delay")) 
+                if (ImGui::Button("Sample + Chip")) 
                 {
-                    selected_file_type =  "sam_delay"; 
+                    selected_file_type =  "sam_chip"; 
+                    ImGui::CloseCurrentPopup();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Dataset")) 
+                {
+                    selected_file_type =  "dataset"; 
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::EndPopup();
             }
-     
+
         // DEVELOP WILL BE REMOVED LATER
         ImVec2 button_size_default = ImGui::GetItemRectSize();
         drawFileDialogGui();
@@ -327,8 +360,9 @@ int main(int, char**)
         CircleIndicator(ref_selected, "Ref");
         ImGui::SameLine();
         CircleIndicator(sam_selected, "Sam");
-        CircleIndicator(sam_delay_selected, "Sam+Delay");
+        CircleIndicator(sam_chip_selected, "Sam+Chip");
         ImVec2 circle_indicator_size_default = ImGui::GetItemRectSize();
+
 
         // Mode Selection Section
         ImGui::Text(" Model");
@@ -341,9 +375,9 @@ int main(int, char**)
             //save data
             // get_phase(c_t_dataset, std::string(ROI_from), std::string(ROI_to), check_phase);
             // test_phase = true;
-
         }
         ImGui::EndGroup();
+
 
         // Thickness Parameters Setting Section
         ImGui::Separator();
@@ -365,7 +399,6 @@ int main(int, char**)
             // 1. initial thickness info data
             init_thickness_scan(std::string(thick_from), std::string(thick_to), std::string(thick_step));
         }
-      
         ImGui::SetCursorPos(ImVec2(10, 265));
         // ImGui::Text((std::string("Optimized Thickness: ") + std::string(OptThickness)).c_str());
         ImGui::Text("Optimized Thickness: ");
@@ -398,6 +431,7 @@ int main(int, char**)
             first_load_plot = true;
         }
         ImGui::EndDisabled();
+
 
         // Extract Refractive Idx Section
         ImGui::Separator();
@@ -488,6 +522,7 @@ int main(int, char**)
         ImGui::SameLine();
         ImGui::RadioButton("Freq Domain", TimeFreqSelect == 1); if (ImGui::IsItemClicked()) {TimeFreqSelect = 1; first_load_plot = true;}
 
+
         // clear all data
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 160, right_window_size.y - (int)(right_window_size.y * 190 / 720) - 121));
         if (ImGui::Button("Clear ALL DATA"))
@@ -496,9 +531,11 @@ int main(int, char**)
             clear_data();
             roi_selector = false;
             ref_selected = false;
+            chip_selected = false;
             sam_selected = false;
-            sam_delay_selected = false;
+            sam_chip_selected = false;
         } 
+
 
         // DataLogger Section
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 105, right_window_size.y - (int)(right_window_size.y * 190 / 720) - 61));  // y offset 26
@@ -521,12 +558,16 @@ int main(int, char**)
         ImGui::SetScrollHereY(1.0f);
         ImGui::EndChild();
 
+
+
         // Version Display Section        
         ImGui::SetCursorPos(ImVec2(10, right_window_size.y - 28));
         ImGui::Text("App FPS: %.1f", io.Framerate);
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 200, right_window_size.y - 28));
-        ImGui::Text("By Dr. Yi  V: 0.1.6");
+        ImGui::Text("By Dr. Yi  V: 0.2.0");
         ImGui::End();
+
+
 
         // Rendering
         ImGui::Render();
@@ -540,6 +581,8 @@ int main(int, char**)
         glfwSwapBuffers(window);
 
     }
+
+
 
     //clean up
     ImGui_ImplOpenGL3_Shutdown();
