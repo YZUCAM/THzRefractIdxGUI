@@ -2,11 +2,14 @@
 //                                              By Dr. Yi Zhu
 //                                                 23-Apr-2025
 
-// second version change backend function
+// third version change backend function
 // TODO add FP mode selection button (check box)
 // change second plot to linear plot
 // second plot set as amplitude fitting data
 // fourth plot set as phase fitting data.
+// fix the second plot x axis unit issue
+// use only simple model with known thickness.
+
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -44,10 +47,10 @@ DataLogger logger(maxLogSize);    //log_buffer size
 bool ref_selected = false;
 bool chip_selected = false;
 bool sam_selected = false;
-bool sam_chip_selected = false;
+bool sam_sub_selected = false;
 bool first_load_plot = false;
 bool roi_selector = false;
-bool know_thickness = false;
+bool know_FP = false;
 
 std::string selected_file_type = "";
 std::string point = "";
@@ -132,8 +135,8 @@ int main(int, char**)
     // char thick_step[128] = "";
     char chip_gp[128] = "0";
     char sam_gp[128] = "0";
-    char sam_chip_gp[128] = "0";
-    char phase_delay[128] = "";
+    char sam_sub_gp[128] = "0";
+    char phase_delay[128] = "0";
     char ROI_from[128] = "";
     char ROI_to[128] = "";
     char learning_rate[128] = "";
@@ -180,13 +183,20 @@ int main(int, char**)
         {
             if (ImPlot::BeginPlot("Time Domain THz Spectrum", plot1_size)) 
             {
-                ImPlot::SetupAxes("Time (s)","E (a.u.)");
+                ImPlot::SetupAxes("Time (ps)","E (a.u.)");
                 ImPlot::SetupLegend(ImPlotLocation_NorthEast);
-                ImPlot::PlotLine("Ref", spectrum_container["ref"].times.data(), spectrum_container["ref"].Tm.data(), spectrum_container["ref"].Tm.size());
+                if (mode == 0)
+                {
+                    ImPlot::PlotLine("Ref", spectrum_container["ref"].times.data(), spectrum_container["ref"].Tm.data(), spectrum_container["ref"].Tm.size());
+                    ImPlot::PlotLine("Sam", spectrum_container["sam"].times.data(), spectrum_container["sam"].Tm.data(), spectrum_container["sam"].Tm.size());
+                }
+                else
+                {
+                    ImPlot::PlotLine("Ref", spectrum_container["ref"].times.data(), spectrum_container["ref"].Tm.data(), spectrum_container["ref"].Tm.size());
+                    ImPlot::PlotLine("Sub", spectrum_container["sub"].times.data(), spectrum_container["sub"].Tm.data(), spectrum_container["sub"].Tm.size());
+                    ImPlot::PlotLine("Sam+Sub", spectrum_container["sam_sub"].times.data(), spectrum_container["sam_sub"].Tm.data(), spectrum_container["sam_sub"].Tm.size());
+                }
                 // if (!spectrum_container["ref"].times.empty()){}
-                ImPlot::PlotLine("Chip", spectrum_container["chip"].times.data(), spectrum_container["chip"].Tm.data(), spectrum_container["chip"].Tm.size());
-                ImPlot::PlotLine("Sam", spectrum_container["sam"].times.data(), spectrum_container["sam"].Tm.data(), spectrum_container["sam"].Tm.size());
-                ImPlot::PlotLine("Sam+Chip", spectrum_container["sam_chip"].times.data(), spectrum_container["sam_chip"].Tm.data(), spectrum_container["sam_chip"].Tm.size());
                 ImPlot::EndPlot();
             }    
     
@@ -198,10 +208,17 @@ int main(int, char**)
                 ImPlot::SetupAxes("Frequency (THz)","E (a.u.)");
                 ImPlot::SetupLegend(ImPlotLocation_NorthEast);
                 ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
-                ImPlot::PlotLine("Ref", spectrum_container["ref"].freqsTHz.data(), spectrum_container["ref"].fty_abs.data(), spectrum_container["ref"].fty_abs.size());
-                ImPlot::PlotLine("Chip", spectrum_container["chip"].freqsTHz.data(), spectrum_container["chip"].fty_abs.data(), spectrum_container["chip"].fty_abs.size());
-                ImPlot::PlotLine("Sam", spectrum_container["sam"].freqsTHz.data(), spectrum_container["sam"].fty_abs.data(), spectrum_container["sam"].fty_abs.size());
-                ImPlot::PlotLine("Sam+Chip", spectrum_container["sam_chip"].freqsTHz.data(), spectrum_container["sam_chip"].fty_abs.data(), spectrum_container["sam_chip"].fty_abs.size());
+                if (mode == 0)
+                {
+                    ImPlot::PlotLine("Ref", spectrum_container["ref"].freqsTHz.data(), spectrum_container["ref"].fty_abs.data(), spectrum_container["ref"].fty_abs.size());
+                    ImPlot::PlotLine("Sam", spectrum_container["sam"].freqsTHz.data(), spectrum_container["sam"].fty_abs.data(), spectrum_container["sam"].fty_abs.size());
+                }
+                else
+                {
+                    ImPlot::PlotLine("Ref", spectrum_container["ref"].freqsTHz.data(), spectrum_container["ref"].fty_abs.data(), spectrum_container["ref"].fty_abs.size());
+                    ImPlot::PlotLine("Sub", spectrum_container["sub"].freqsTHz.data(), spectrum_container["sub"].fty_abs.data(), spectrum_container["sub"].fty_abs.size());
+                    ImPlot::PlotLine("Sam+Sub", spectrum_container["sam_sub"].freqsTHz.data(), spectrum_container["sam_sub"].fty_abs.data(), spectrum_container["sam_sub"].fty_abs.size());
+                }
                 ImPlot::EndPlot();
             }    
     
@@ -221,25 +238,38 @@ int main(int, char**)
         {
             ImPlot::SetupAxes("Frequency (THz)","E (a.u.)");
             ImPlot::SetupLegend(ImPlotLocation_NorthEast);
-            ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+            // ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
             if (roi_selector)
             {
-                ImPlot::PlotLine("Tm_chip", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm0_abs.data(), ROI_data.roi_Tm0_abs.size());
-                ImPlot::PlotLine("Tm_sam", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm1_abs.data(), ROI_data.roi_Tm1_abs.size());
-                ImPlot::PlotLine("Tm_sam_chip", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm2_abs.data(), ROI_data.roi_Tm2_abs.size());
+                if (mode == 0)
+                {
+                    
+                    ImPlot::PlotLine("Tm_sam", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm1_abs.data(), ROI_data.roi_Tm1_abs.size());
+                }
+                else
+                {
+                    ImPlot::PlotLine("Tm_sub", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm0_abs.data(), ROI_data.roi_Tm0_abs.size());
+                    ImPlot::PlotLine("Tm_sam_sub", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm2_abs.data(), ROI_data.roi_Tm2_abs.size());
+                }
             }
             else
             {
-                ImPlot::PlotLine("Tm_chip", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm0_abs.data(), c_t_dataset.Tm0_abs.size());
-                ImPlot::PlotLine("Tm_sam", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm1_abs.data(), c_t_dataset.Tm1_abs.size());
-                ImPlot::PlotLine("Tm_sam_chip", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm2_abs.data(), c_t_dataset.Tm2_abs.size());
+                if (mode == 0)
+                {
+                    ImPlot::PlotLine("Tm_sam", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm1_abs.data(), c_t_dataset.Tm1_abs.size());
+                }
+                else
+                {
+                    ImPlot::PlotLine("Tm_sub", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm0_abs.data(), c_t_dataset.Tm0_abs.size());
+                    ImPlot::PlotLine("Tm_sam_sub", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm2_abs.data(), c_t_dataset.Tm2_abs.size());
+                }
             }
             ImPlot::EndPlot();
         }    
         ImGui::End();
 
 
-
+        
         // Third Panel in the Left
         ImGui::SetNextWindowPos(ImVec2(0, (int)windowHeight/2));
         ImGui::SetNextWindowSize(ImVec2((int)(windowWidth - right_window_width)/2,(int)windowHeight/2));
@@ -282,7 +312,7 @@ int main(int, char**)
         {
             ImPlot::SetupAxes("Frequency (Hz)", "Phase (rad)");
             ImPlot::SetupLegend(ImPlotLocation_NorthEast);
-            ImPlot::PlotLine("Phi_chip", thickness_info.thickarry.data(), thickness_info.thick_error.data(), thickness_info.thick_error.size());
+            ImPlot::PlotLine("Phi_sub", thickness_info.thickarry.data(), thickness_info.thick_error.data(), thickness_info.thick_error.size());
             // ImPlot::PlotLine("Phi_sam", thickness_info.thickarry.data(), thickness_info.thick_error.data(), thickness_info.thick_error.size());
             // ImPlot::PlotLine("Phi_sam_chip", thickness_info.thickarry.data(), thickness_info.thick_error.data(), thickness_info.thick_error.size());
             ImPlot::EndPlot();
@@ -310,7 +340,7 @@ int main(int, char**)
 
         // check box for know and unknow thickness
         ImGui::SetCursorPos(ImVec2(10, 200));
-        ImGui::Checkbox("Known Sample Thickness", &know_thickness);
+        ImGui::Checkbox("Fabry-Pérot Effect", &know_FP);
 
         // Select File Section
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 125, 30));
@@ -332,9 +362,9 @@ int main(int, char**)
                     ImGui::CloseCurrentPopup();  // Close modal after selection
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Delay Chip")) 
+                if (ImGui::Button("Substrate")) 
                 {
-                    selected_file_type =  "chip"; 
+                    selected_file_type =  "sub"; 
                     ImGui::CloseCurrentPopup();  // Close modal after selection
                 }
                 ImGui::SameLine();
@@ -344,9 +374,9 @@ int main(int, char**)
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("Sample + Chip")) 
+                if (ImGui::Button("Sample+Substrate")) 
                 {
-                    selected_file_type =  "sam_chip"; 
+                    selected_file_type =  "sam_sub"; 
                     ImGui::CloseCurrentPopup();
                 }
                 ImGui::SameLine();
@@ -367,8 +397,8 @@ int main(int, char**)
         CircleIndicator(ref_selected, "Ref");
         ImGui::SameLine();
         CircleIndicator(sam_selected, "Sam");
-        CircleIndicator(chip_selected, "Chip");
-        CircleIndicator(sam_chip_selected, "Sam+Chip");
+        CircleIndicator(chip_selected, "Sub");
+        CircleIndicator(sam_sub_selected, "Sam+Sub");
         ImVec2 circle_indicator_size_default = ImGui::GetItemRectSize();
 
 
@@ -392,20 +422,20 @@ int main(int, char**)
         ImGui::Separator();
         ImGui::Text("Global Phases (Unit ps)");
         // ImVec2 text_size_default = ImGui::GetItemRectSize();
-        ImGui::Text("Chip     ");
+        ImGui::Text("Sub     ");
         ImGui::SameLine();
         ImGui::Text("Sample   ");
         ImGui::SameLine();
-        ImGui::Text("Sample+Chip");
+        ImGui::Text("Sample+Sub");
 
         ImGui::SetNextItemWidth(90); 
-        ImGui::InputTextWithHint("##t1", "Chip", chip_gp, IM_ARRAYSIZE(chip_gp));
+        ImGui::InputTextWithHint("##t1", "Sub", chip_gp, IM_ARRAYSIZE(chip_gp));
         ImGui::SameLine();
         ImGui::SetNextItemWidth(90); 
         ImGui::InputTextWithHint("##t2", "Sam", sam_gp, IM_ARRAYSIZE(sam_gp));
         ImGui::SameLine();
         ImGui::SetNextItemWidth(90); 
-        ImGui::InputTextWithHint("##t3", "Sam+Chip", sam_chip_gp, IM_ARRAYSIZE(sam_chip_gp));
+        ImGui::InputTextWithHint("##t3", "Sam+Sub", sam_sub_gp, IM_ARRAYSIZE(sam_sub_gp));
         ImGui::SameLine();
         ImGui::Text(point.c_str());
         ImGui::SameLine();
@@ -415,36 +445,36 @@ int main(int, char**)
             // init_thickness_scan(std::string(chip_gp), std::string(sam_gp), std::string(sam_chip_gp));
             // init the global phase for three transmission spectrum 
         }
-        ImGui::SetCursorPos(ImVec2(10, 310));
+        // ImGui::SetCursorPos(ImVec2(10, 310));
         // ImGui::Text((std::string("Optimized Thickness: ") + std::string(OptThickness)).c_str());
-        ImGui::Text("Known Thickness:");
-        ImGui::SameLine();
-        ImGui::SetNextItemWidth(150); 
+        ImGui::Text("Thickness(sam):");
+        // ImGui::SameLine();
+        // ImGui::SetNextItemWidth(150); 
 
-        // REMARK: use this way to modify the OptThickness in the real time.
-        // strncpy(OptThickness, "100", sizeof(OptThickness));
-
-        
         ImGui::SameLine();
         ImGui::SetNextItemWidth(60);
         ImGui::InputTextWithHint("##t8", "Thickness", Thickness, IM_ARRAYSIZE(Thickness));
         ImGui::SameLine();
         ImGui::Text("(mm)");
         ImGui::SameLine();
-        if (ImGui::Button(" confirm "))
+        if (ImGui::Button(" Set Sam "))
         {
             ROI_data.L = torch::tensor(std::stof(std::string(Thickness)), torch::dtype(torch::kFloat));
             logger.Log(DataLogger::INFO, "Thickness is set to: " + std::string(Thickness));
         }
 
-        // controlled phase delay
-        ImGui::SetNextItemWidth(180); 
-        ImGui::InputTextWithHint("##t9", "Chip Thickness(mm)", phase_delay, IM_ARRAYSIZE(phase_delay));
+        // substrate thickness
+        ImGui::Text("Thickness(sub):");
         ImGui::SameLine();
-        if (ImGui::Button(" Set Phase Delay "))
+        ImGui::SetNextItemWidth(60); 
+        ImGui::InputTextWithHint("##t9", "Sub Thickness(mm)", phase_delay, IM_ARRAYSIZE(phase_delay));
+        ImGui::SameLine();
+        ImGui::Text("(mm)");
+        ImGui::SameLine();
+        if (ImGui::Button(" Set Sub "))
         {
             induced_phase_delay = std::stof(std::string(phase_delay));
-            logger.Log(DataLogger::INFO, "Set introduced phase delay: " + std::string(phase_delay));
+            logger.Log(DataLogger::INFO, "Set substrate thickness: " + std::string(phase_delay));
         }
 
         // ImGui::Columns(2,"##c1");
@@ -553,11 +583,11 @@ int main(int, char**)
         }
         ImGui::Columns(1); // back to single column
         ImGui::Separator(); 
-        ImGui::Text("Optimized Sample Thickness: ");
-        // ImGui::SameLine();
-        // add thickness display panel
+        // ImGui::Text("Optimized Sample Thickness: ");
+        // // ImGui::SameLine();
+        // // add thickness display panel
 
-        ImGui::Separator(); 
+        // ImGui::Separator(); 
         // if (isTraining) {
         ImGui::ProgressBar(progress, ImVec2(400,20), (std::to_string((int)(progress*100)) + "%").c_str());
         // }
@@ -578,7 +608,7 @@ int main(int, char**)
             ref_selected = false;
             chip_selected = false;
             sam_selected = false;
-            sam_chip_selected = false;
+            sam_sub_selected = false;
         } 
 
 
@@ -609,7 +639,7 @@ int main(int, char**)
         ImGui::SetCursorPos(ImVec2(10, right_window_size.y - 28));
         ImGui::Text("App FPS: %.1f", io.Framerate);
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 200, right_window_size.y - 28));
-        ImGui::Text("By Dr. Yi  V: 0.2.0");
+        ImGui::Text("By Dr. Yi  V: 0.2.1");
         ImGui::End();
 
 

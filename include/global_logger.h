@@ -16,7 +16,7 @@ extern bool know_thickness;
 extern bool ref_selected;
 extern bool chip_selected;
 extern bool sam_selected;
-extern bool sam_chip_selected;
+extern bool sam_sub_selected;
 extern bool first_load_plot;
 extern std::string selected_file_type;
 extern std::string point;

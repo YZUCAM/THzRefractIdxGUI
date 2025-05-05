@@ -143,7 +143,7 @@ void load_dataset_spectrum(const std::string& filename, spectrum_dataset& data1,
     std::transform(data2.freqs.begin(), data2.freqs.end(), data2.freqsTHz.begin(), [](auto x){return x * 1e-12;});
     auto abs_result2 = torch::abs(data2.fty).to(torch::kFloat);
     data2.fty_abs.resize(abs_result2.size(0));
-    std::memcpy(data1.fty_abs.data(), abs_result2.data_ptr<float>(), abs_result2.numel() * sizeof(float));
+    std::memcpy(data2.fty_abs.data(), abs_result2.data_ptr<float>(), abs_result2.numel() * sizeof(float));
 
     data3.fty = fft(data3.Tm);
     data3.freqs = construct_freqs(data3.times);

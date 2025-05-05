@@ -43,9 +43,9 @@ void drawFileDialogGui()
                 message = "Load reference success.";
                 logger.Log(DataLogger::INFO, message);
 
-                spectrum_container["chip"] = std::move(chip_spectrum);
+                spectrum_container["sub"] = std::move(chip_spectrum);
                 chip_selected = true;
-                message = "Load delay chip success.";
+                message = "Load substrate success.";
                 logger.Log(DataLogger::INFO, message);
 
                 spectrum_container["sam"] = std::move(sam_spectrum);
@@ -53,9 +53,9 @@ void drawFileDialogGui()
                 message = "Load sample success.";
                 logger.Log(DataLogger::INFO, message);
 
-                spectrum_container["sam_chip"] = std::move(sam_chip_spectrum);
-                sam_chip_selected = true;
-                message = "Load sample + chip success.";
+                spectrum_container["sam_sub"] = std::move(sam_chip_spectrum);
+                sam_sub_selected = true;
+                message = "Load sample + substrate success.";
                 logger.Log(DataLogger::INFO, message);
 
             }
@@ -67,12 +67,12 @@ void drawFileDialogGui()
                 message = "Load reference success.";
                 logger.Log(DataLogger::INFO, message);
             } 
-            else if (selected_file_type == "chip")
+            else if (selected_file_type == "sub")
             {
                 load_spectrum(filePathName, chip_spectrum);
-                spectrum_container["chip"] = std::move(chip_spectrum);
+                spectrum_container["sub"] = std::move(chip_spectrum);
                 chip_selected = true;
-                message = "Load delay chip success.";
+                message = "Load substrate success.";
                 logger.Log(DataLogger::INFO, message);
             } 
             else if (selected_file_type == "sam")
@@ -83,12 +83,12 @@ void drawFileDialogGui()
                 message = "Load sample success.";
                 logger.Log(DataLogger::INFO, message);
             }
-            else if (selected_file_type == "sam_chip")
+            else if (selected_file_type == "sam_sub")
             {
                 load_spectrum(filePathName, sam_chip_spectrum);
-                spectrum_container["sam_chip"] = std::move(sam_chip_spectrum);
-                sam_chip_selected = true;
-                message = "Load sample + chip success.";
+                spectrum_container["sam_sub"] = std::move(sam_chip_spectrum);
+                sam_sub_selected = true;
+                message = "Load sample + substrate success.";
                 logger.Log(DataLogger::INFO, message);
             }
             else
@@ -100,10 +100,10 @@ void drawFileDialogGui()
             
 
             // check if container has ref and chip and sam and sam_chip
-            if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["chip"].Tm.empty())) 
+            if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sub"].Tm.empty())) 
             {
                 // TODO AFTER CLEAR DATA, LOAD NEW DATA NO TM1_abs calculation results.
-                c_t_dataset.Tm0 = get_complex_transmission(spectrum_container["chip"], spectrum_container["ref"]);
+                c_t_dataset.Tm0 = get_complex_transmission(spectrum_container["sub"], spectrum_container["ref"]);
                 
                 auto abs_Tm0 = torch::abs(c_t_dataset.Tm0).to(torch::kFloat);
                 c_t_dataset.Tm0_abs.resize(abs_Tm0.size(0));
@@ -120,9 +120,9 @@ void drawFileDialogGui()
                 std::memcpy(c_t_dataset.Tm1_abs.data(), abs_Tm1.data_ptr<float>(), abs_Tm1.numel() * sizeof(float));
             }
 
-            if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sam_chip"].Tm.empty())) 
+            if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sam_sub"].Tm.empty())) 
             {
-                c_t_dataset.Tm2 = get_complex_transmission(spectrum_container["sam_chip"], spectrum_container["ref"]);
+                c_t_dataset.Tm2 = get_complex_transmission(spectrum_container["sam_sub"], spectrum_container["ref"]);
                 // std::cout << "Tm2 calculated: " << Tm2[1] << std::endl;
                 auto abs_Tm2 = torch::abs(c_t_dataset.Tm2).to(torch::kFloat);
                 c_t_dataset.Tm2_abs.resize(abs_Tm2.size(0));
