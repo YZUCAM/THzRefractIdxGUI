@@ -6,12 +6,12 @@
 #include "global_logger.h"
 
 void tensor2vector(const torch::Tensor& t, std::vector<float>& v);
-torch::Tensor construct_w(const spectrum_dataset& spectrum);
+void construct_w(const spectrum_dataset& spectrum);
 torch::Tensor get_complex_transmission(const spectrum_dataset& s1, const spectrum_dataset& r1);
 
 void set_ROI_dataset(std::string from, std::string to);
 
-void init_thickness_scan(std::string from, std::string to, std::string step);
+void init_global_phase(std::string chip_gp, std::string sam_gp, std::string sam_sub_gp);
 
 torch::Tensor unwrap(const torch::Tensor& phase, float discontinuity = M_PI);
 

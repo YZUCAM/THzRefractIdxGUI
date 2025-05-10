@@ -44,23 +44,23 @@ struct spectrum_dataset
 
 struct complex_transmission_dataset
 {
-    torch::Tensor Tm0;
-    torch::Tensor Tm1;
-    torch::Tensor Tm2;
-    std::vector<float> Tm0_abs;
-    std::vector<float> Tm1_abs;
-    std::vector<float> Tm2_abs;
+    torch::Tensor Tm_sub;
+    torch::Tensor Tm_sam;
+    torch::Tensor Tm_sam_sub;
+    std::vector<float> Tm_sub_abs;
+    std::vector<float> Tm_sam_abs;
+    std::vector<float> Tm_sam_sub_abs;
 };
 
 struct roi_dataset
 {
-    torch::Tensor roi_Tm0;      // for chip
-    torch::Tensor roi_Tm1;
-    torch::Tensor roi_Tm2;
+    torch::Tensor roi_Tm_sub;      // for chip
+    torch::Tensor roi_Tm_sam;
+    torch::Tensor roi_Tm_sam_sub;
     torch::Tensor roi_w;
-    std::vector<float> roi_Tm0_abs;
-    std::vector<float> roi_Tm1_abs;
-    std::vector<float> roi_Tm2_abs;
+    std::vector<float> roi_Tm_sub_abs;
+    std::vector<float> roi_Tm_sam_abs;
+    std::vector<float> roi_Tm_sam_sub_abs;
     std::vector<float> roi_freqsTHz;
     torch::Tensor L;
 };
@@ -82,10 +82,24 @@ struct cal_parameters
     bool FP;
 };
 
-struct phase_dataset
+struct global_phase_delay
 {
-    torch::Tensor roi_measured_phase1;
-    torch::Tensor roi_measured_phase2;
+    torch::Tensor gpd_sub;
+    torch::Tensor gpd_sam;
+    torch::Tensor gpd_sam_sub;
+};
+
+struct phase_dataset
+{   
+    std::vector<float> measured_phase0_display;
+    std::vector<float> measured_phase1_display;
+    std::vector<float> measured_phase2_display;
+    std::vector<float> roi_measured_phase0_display;
+    std::vector<float> roi_measured_phase1_display;
+    std::vector<float> roi_measured_phase2_display;
+    torch::Tensor roi_measured_phase0;  // substrate
+    torch::Tensor roi_measured_phase1;  // sample
+    torch::Tensor roi_measured_phase2;  // sample+substrate
     float controlled_phase_delay = 0;
 };
 

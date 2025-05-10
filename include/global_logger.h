@@ -20,9 +20,10 @@ extern bool sam_sub_selected;
 extern bool first_load_plot;
 extern std::string selected_file_type;
 extern std::string point;
-extern float induced_phase_delay;
+extern float sub_thickness;
 
-extern std::vector<float> pos;
+// extern std::vector<float> pos;
+extern torch::Tensor w;
 // extern int skip_row;
 extern std::unordered_map<std::string, spectrum_dataset> spectrum_container;
 extern spectrum_dataset ref_spectrum;
@@ -39,7 +40,7 @@ extern phase_dataset phase_info;
 
 extern complex_refractive_index cri;
 
-extern thickness_finder thickness_info;
+extern global_phase_delay gpd;
 
 
 // under 1280 x 720 main window size, the each widget size define here:

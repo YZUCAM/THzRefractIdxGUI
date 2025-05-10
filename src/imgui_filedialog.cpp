@@ -4,7 +4,8 @@
 // #include "global_logger.h"
 
 
-std::vector<float> pos;
+// std::vector<float> pos;
+torch::Tensor w;
 // int skip_row = 1;
 std::unordered_map<std::string, spectrum_dataset> spectrum_container;
 spectrum_dataset ref_spectrum;
@@ -58,6 +59,10 @@ void drawFileDialogGui()
                 message = "Load sample + substrate success.";
                 logger.Log(DataLogger::INFO, message);
 
+                construct_w(spectrum_container["ref"]);
+                message = "Obtain angular frequency success.";
+                logger.Log(DataLogger::INFO, message);
+
             }
             else if (selected_file_type == "ref")
             {
@@ -65,6 +70,9 @@ void drawFileDialogGui()
                 spectrum_container["ref"] = std::move(ref_spectrum);
                 ref_selected = true;
                 message = "Load reference success.";
+                logger.Log(DataLogger::INFO, message);
+                construct_w(spectrum_container["sam"]);
+                message = "Obtain angular frequency success.";
                 logger.Log(DataLogger::INFO, message);
             } 
             else if (selected_file_type == "sub")
@@ -103,30 +111,30 @@ void drawFileDialogGui()
             if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sub"].Tm.empty())) 
             {
                 // TODO AFTER CLEAR DATA, LOAD NEW DATA NO TM1_abs calculation results.
-                c_t_dataset.Tm0 = get_complex_transmission(spectrum_container["sub"], spectrum_container["ref"]);
+                c_t_dataset.Tm_sub = get_complex_transmission(spectrum_container["sub"], spectrum_container["ref"]);
                 
-                auto abs_Tm0 = torch::abs(c_t_dataset.Tm0).to(torch::kFloat);
-                c_t_dataset.Tm0_abs.resize(abs_Tm0.size(0));
-                std::memcpy(c_t_dataset.Tm0_abs.data(), abs_Tm0.data_ptr<float>(), abs_Tm0.numel() * sizeof(float));
+                auto abs_Tm0 = torch::abs(c_t_dataset.Tm_sub).to(torch::kFloat);
+                c_t_dataset.Tm_sub_abs.resize(abs_Tm0.size(0));
+                std::memcpy(c_t_dataset.Tm_sub_abs.data(), abs_Tm0.data_ptr<float>(), abs_Tm0.numel() * sizeof(float));
             }
 
             if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sam"].Tm.empty())) 
             {
                 // TODO AFTER CLEAR DATA, LOAD NEW DATA NO TM1_abs calculation results.
-                c_t_dataset.Tm1 = get_complex_transmission(spectrum_container["sam"], spectrum_container["ref"]);
+                c_t_dataset.Tm_sam = get_complex_transmission(spectrum_container["sam"], spectrum_container["ref"]);
                 
-                auto abs_Tm1 = torch::abs(c_t_dataset.Tm1).to(torch::kFloat);
-                c_t_dataset.Tm1_abs.resize(abs_Tm1.size(0));
-                std::memcpy(c_t_dataset.Tm1_abs.data(), abs_Tm1.data_ptr<float>(), abs_Tm1.numel() * sizeof(float));
+                auto abs_Tm1 = torch::abs(c_t_dataset.Tm_sam).to(torch::kFloat);
+                c_t_dataset.Tm_sam_abs.resize(abs_Tm1.size(0));
+                std::memcpy(c_t_dataset.Tm_sam_abs.data(), abs_Tm1.data_ptr<float>(), abs_Tm1.numel() * sizeof(float));
             }
 
             if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sam_sub"].Tm.empty())) 
             {
-                c_t_dataset.Tm2 = get_complex_transmission(spectrum_container["sam_sub"], spectrum_container["ref"]);
+                c_t_dataset.Tm_sam_sub = get_complex_transmission(spectrum_container["sam_sub"], spectrum_container["ref"]);
                 // std::cout << "Tm2 calculated: " << Tm2[1] << std::endl;
-                auto abs_Tm2 = torch::abs(c_t_dataset.Tm2).to(torch::kFloat);
-                c_t_dataset.Tm2_abs.resize(abs_Tm2.size(0));
-                std::memcpy(c_t_dataset.Tm2_abs.data(), abs_Tm2.data_ptr<float>(), abs_Tm2.numel() * sizeof(float));
+                auto abs_Tm2 = torch::abs(c_t_dataset.Tm_sam_sub).to(torch::kFloat);
+                c_t_dataset.Tm_sam_sub_abs.resize(abs_Tm2.size(0));
+                std::memcpy(c_t_dataset.Tm_sam_sub_abs.data(), abs_Tm2.data_ptr<float>(), abs_Tm2.numel() * sizeof(float));
             }
 
         }

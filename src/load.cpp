@@ -1,6 +1,7 @@
 #include "load.h"
 #include "global_logger.h"
 
+// Unified unit: times: ps, freqs: Hz. freqsTHz: THz
 
 void read_csv_columns(const std::string& filename, std::vector<float>& c1,
     std::vector<float>& c2) 
@@ -48,11 +49,12 @@ void read_csv_columns(const std::string& filename, std::vector<float>& c1,
 void load_spectrum(const std::string& filename, spectrum_dataset& data)
 {
     // skip_row and pos are global variables no need define.
-    read_csv_columns(filename, pos, data.Tm);
+    // fixed loading data type [time(ps), Tm, freqs(unit Hz), freqsTH(unit THz), fty: tensor, fty_abs]
+    read_csv_columns(filename, data.times, data.Tm);
     data.fty = fft(data.Tm);
-    data.times = pos2time(pos);              // this is direct read pos data,  USE KUN's DATA, the time original is ps now use this function convert to s(NEED TO FIX IN FUTURE)
+    // data.times = pos2time(pos);              // this is direct read pos data,  USE KUN's DATA, the time original is ps now use this function convert to s(NEED TO FIX IN FUTURE)
     // data.times = pos;                           // this is direct read time data, time unit is s
-    data.freqs = construct_freqs(data.times);
+    data.freqs = construct_freqs(data.times);   //unit is Hz
     data.freqsTHz.resize(data.freqs.size());
     // freqsTHz(freqs.size());
     std::transform(data.freqs.begin(), data.freqs.end(), data.freqsTHz.begin(), [](auto x){return x * 1e-12;});
@@ -130,9 +132,9 @@ void load_dataset_spectrum(const std::string& filename, spectrum_dataset& data1,
     }
 
     data1.fty = fft(data1.Tm);
-    data1.freqs = construct_freqs(data1.times);
+    data1.freqs = construct_freqs(data1.times); // time is ps, freq is Hz 
     data1.freqsTHz.resize(data1.freqs.size());
-    std::transform(data1.freqs.begin(), data1.freqs.end(), data1.freqsTHz.begin(), [](auto x){return x * 1e-12;});
+    std::transform(data1.freqs.begin(), data1.freqs.end(), data1.freqsTHz.begin(), [](auto x){return x * 1e-12;}); // time is ps
     auto abs_result1 = torch::abs(data1.fty).to(torch::kFloat);
     data1.fty_abs.resize(abs_result1.size(0));
     std::memcpy(data1.fty_abs.data(), abs_result1.data_ptr<float>(), abs_result1.numel() * sizeof(float));

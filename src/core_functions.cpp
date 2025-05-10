@@ -16,7 +16,7 @@ phase_dataset phase_info;
 
 complex_refractive_index cri;
 
-thickness_finder thickness_info;
+global_phase_delay gpd;
 
 
 // convert tensor data to vector data for visulization
@@ -28,11 +28,10 @@ void tensor2vector(const torch::Tensor& t, std::vector<float>& v)
 
 
 // convert everything to tensor for vector and matrix calculation maybe simple.
-torch::Tensor construct_w(const spectrum_dataset& spectrum)
+void construct_w(const spectrum_dataset& spectrum)
 {
     torch::Tensor f = torch::tensor(spectrum.freqs);
-    torch::Tensor w = f * 2 * M_PI;
-    return w;
+    w = f * 2 * M_PI;
 }
 
 
@@ -58,90 +57,55 @@ void set_ROI_dataset(std::string from, std::string to)
     
         // clear roi_dataset container data
         ROI_data.roi_freqsTHz.clear();
-        ROI_data.roi_Tm0_abs.clear();
-        ROI_data.roi_Tm1_abs.clear();
-        ROI_data.roi_Tm2_abs.clear();
+        ROI_data.roi_Tm_sub_abs.clear();
+        ROI_data.roi_Tm_sam_abs.clear();
+        ROI_data.roi_Tm_sam_sub_abs.clear();
         // tensor part will be automatically rewrite so no need handle it manually
     
         // need to process later for adding global phase term!!!
-        torch::Tensor w = construct_w(spectrum_container["ref"]);
 
         //seperate select w_roi and freqsTHz
+        if (idx_from >= 0 && idx_to <= w.size(0) && idx_from <= idx_to) 
+        {
+            ROI_data.roi_w = w.slice(0, idx_from, idx_to).clone();
+        }
         if (idx_from >= 0 && idx_to <= spectrum_container["ref"].fty.size(0) && idx_from <= idx_to) 
         {
             ROI_data.roi_w = w.slice(0, idx_from, idx_to).clone();
             // freqsTHZ need reshape
             std::copy(spectrum_container["ref"].freqsTHz.begin() + idx_from, spectrum_container["ref"].freqsTHz.begin() + idx_to, std::back_inserter(ROI_data.roi_freqsTHz));
         }
-        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm0.size(0) && idx_from <= idx_to) 
+        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm_sub.size(0) && idx_from <= idx_to) 
         {
             // tensor data
-            ROI_data.roi_Tm0 = c_t_dataset.Tm0.slice(0, idx_from, idx_to).clone();
+            ROI_data.roi_Tm_sub = c_t_dataset.Tm_sub.slice(0, idx_from, idx_to).clone();
         }
-        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm1.size(0) && idx_from <= idx_to) 
+        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm_sam.size(0) && idx_from <= idx_to) 
         {
             // tensor data
-            ROI_data.roi_Tm1 = c_t_dataset.Tm1.slice(0, idx_from, idx_to).clone();
+            ROI_data.roi_Tm_sam = c_t_dataset.Tm_sam.slice(0, idx_from, idx_to).clone();
         }
-        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm2.size(0) && idx_from <= idx_to) 
+        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm_sam_sub.size(0) && idx_from <= idx_to) 
         {
-            ROI_data.roi_Tm2 = c_t_dataset.Tm2.slice(0, idx_from, idx_to).clone();
+            ROI_data.roi_Tm_sam_sub = c_t_dataset.Tm_sam_sub.slice(0, idx_from, idx_to).clone();
         }
-        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm0_abs.size() && idx_from <= idx_to)
+        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm_sub_abs.size() && idx_from <= idx_to)
         {
-            std::copy(c_t_dataset.Tm0_abs.begin() + idx_from, c_t_dataset.Tm0_abs.begin() + idx_to, std::back_inserter(ROI_data.roi_Tm0_abs));
+            std::copy(c_t_dataset.Tm_sub_abs.begin() + idx_from, c_t_dataset.Tm_sub_abs.begin() + idx_to, std::back_inserter(ROI_data.roi_Tm_sub_abs));
         }
-        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm1_abs.size() && idx_from <= idx_to)
+        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm_sam_abs.size() && idx_from <= idx_to)
         {
-            std::copy(c_t_dataset.Tm1_abs.begin() + idx_from, c_t_dataset.Tm1_abs.begin() + idx_to, std::back_inserter(ROI_data.roi_Tm1_abs));
+            std::copy(c_t_dataset.Tm_sam_abs.begin() + idx_from, c_t_dataset.Tm_sam_abs.begin() + idx_to, std::back_inserter(ROI_data.roi_Tm_sam_abs));
         }
-        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm2_abs.size() && idx_from <= idx_to)   
+        if (idx_from >= 0 && idx_to <= c_t_dataset.Tm_sam_sub_abs.size() && idx_from <= idx_to)   
         {
-            std::copy(c_t_dataset.Tm2_abs.begin() + idx_from, c_t_dataset.Tm2_abs.begin() + idx_to, std::back_inserter(ROI_data.roi_Tm2_abs));
+            std::copy(c_t_dataset.Tm_sam_sub_abs.begin() + idx_from, c_t_dataset.Tm_sam_sub_abs.begin() + idx_to, std::back_inserter(ROI_data.roi_Tm_sam_sub_abs));
         }
     }   
 }
 
 // robust checked.
-void init_thickness_scan(std::string from, std::string to, std::string step)
-{
-    thickness_info.thickarry.clear();
 
-    float idx_from = std::stof(from);
-    float idx_to = std::stof(to);
-    float idx_step = std::stof(step);
-    int N = (int)((idx_to - idx_from)/idx_step);
-
-    if (idx_from >= 0 && idx_from <= idx_to)
-    {
-        std::vector<float> thickness_mesh = linspace(idx_from, idx_to, N);
-
-        std::cout << "thickmesh size: " << thickness_mesh.size() << std::endl;
-
-        thickness_info.thickarry.resize(thickness_mesh.size());
-        std::copy(thickness_mesh.begin(), thickness_mesh.end(), thickness_info.thickarry.begin());
-
-        // if (idx_from >= 0 && idx_to <= thickness_mesh.size() && idx_from <= idx_to)
-        // {
-        //     std::copy(thickness_mesh.begin() + idx_from, thickness_mesh.begin() + idx_to, std::back_inserter(thickness_info.thickarry));
-        // }
-        point = std::to_string(N);
-        logger.Log(DataLogger::INFO, "Initial thickness scan mesh grid success.");
-    }
-    else
-    {
-        logger.Log(DataLogger::ERROR, "Invalid input value, re-enter thickness range");
-    }
-
-
-    // std::cout << "thickarray size: " << thickness_info.thickarry.size() << std::endl;
-    // std::cout << "first thickness: " << thickness_info.thickarry[0] << std::endl;
-    std::cout << "in init thickness function, print vector: " << std::endl;
-    for (const auto& val : thickness_info.thickarry) {
-        std::cout << val << std::endl;
-    }
-
-}
 
 
 // ---------------key functions--------------------- //
@@ -170,7 +134,28 @@ torch::Tensor unwrap(const torch::Tensor& phase, float discontinuity)
     return phase + correction;
 }
 
-// get_phase function has been optimized direct access global variable
+
+void init_global_phase(std::string chip_gp, std::string sam_gp, std::string sam_sub_gp)
+{
+    // thickness_info.thickarry.clear();
+
+    float chip_extra_phase = std::stof(chip_gp);
+    float sam_extra_phase = std::stof(sam_gp);
+    float sam_sub_extra_phase = std::stof(sam_sub_gp);
+
+    if (w.size(0))
+    {
+        gpd.gpd_sub = w*chip_extra_phase*1e-12;
+        gpd.gpd_sam = w*sam_extra_phase*1e-12;
+        gpd.gpd_sam_sub = w*sam_sub_extra_phase*1e-12;
+    }
+    // std::cout << w.size(0) << std::endl;
+    // std::cout << gpd.gpd_sub.size(0) <<std::endl;
+    // std::cout << gpd.gpd_sam.size(0) <<std::endl;
+    // std::cout << gpd.gpd_sam_sub.size(0) <<std::endl;
+}
+
+// get_phase function has been optimized direct access global variable NEED ADD GLOBAL PHASE DELAY
 void get_phase(std::string from, std::string to)
 {
     // slice to desire ROI
@@ -178,36 +163,82 @@ void get_phase(std::string from, std::string to)
     int idx_to = std::stoi(to);
 
     // NEED UNWRAP FROM 0 FREQUENCE AND THEN CHOP TO DESIGER REGION
-    if (c_t_dataset.Tm1.numel() == 0)
+    if (c_t_dataset.Tm_sub.numel() == 0)
     {
-        logger.Log(DataLogger::INFO, "No Tm1 data.");
+        logger.Log(DataLogger::INFO, "No substrate Transmission data.");
     }
     else
     {
-        torch::Tensor angle1 = torch::angle(c_t_dataset.Tm1.to(torch::kComplexFloat));  // convert it to double!
-        torch::Tensor phase1 = unwrap(angle1);
+        torch::Tensor angle0 = torch::angle(c_t_dataset.Tm_sub.to(torch::kComplexFloat));  // convert it to double!
+        torch::Tensor phase0 = unwrap(angle0) + gpd.gpd_sub;
+        tensor2vector(phase0, phase_info.measured_phase0_display);
+
+        if (idx_from >= 0 && idx_to <= phase0.size(0) && idx_from <= idx_to) 
+        {
+            phase_info.roi_measured_phase0 = phase0.slice(0, idx_from, idx_to).clone();
+            tensor2vector(phase_info.roi_measured_phase0, phase_info.roi_measured_phase0_display);
+        }
+    }
+    if (c_t_dataset.Tm_sam.numel() == 0)
+    {
+        logger.Log(DataLogger::INFO, "No sample Transmission data.");
+    }
+    else
+    {
+        torch::Tensor angle1 = torch::angle(c_t_dataset.Tm_sam.to(torch::kComplexFloat));  // convert it to double!
+        torch::Tensor phase1 = unwrap(angle1) + gpd.gpd_sam;
+        tensor2vector(phase1, phase_info.measured_phase1_display);
 
         if (idx_from >= 0 && idx_to <= phase1.size(0) && idx_from <= idx_to) 
         {
             phase_info.roi_measured_phase1 = phase1.slice(0, idx_from, idx_to).clone();
+            tensor2vector(phase_info.roi_measured_phase1, phase_info.roi_measured_phase1_display);
         }
     }
-    if (c_t_dataset.Tm2.numel() == 0)
+    if (c_t_dataset.Tm_sam_sub.numel() == 0)
     {
-        logger.Log(DataLogger::INFO, "No Tm2 data.");
+        logger.Log(DataLogger::INFO, "No sample + substrate transmission data.");
     }
     else
     {
-        torch::Tensor angle2 = torch::angle(c_t_dataset.Tm2.to(torch::kComplexFloat));  // convert it to double!
-        torch::Tensor phase2 = unwrap(angle2);
+        torch::Tensor angle2 = torch::angle(c_t_dataset.Tm_sam_sub.to(torch::kComplexFloat));  // convert it to double!
+        torch::Tensor phase2 = unwrap(angle2) + gpd.gpd_sam_sub;
+        tensor2vector(phase2, phase_info.measured_phase2_display);
 
         if (idx_from >= 0 && idx_to <= phase2.size(0) && idx_from <= idx_to) 
         {
             phase_info.roi_measured_phase2 = phase2.slice(0, idx_from, idx_to).clone();
+            tensor2vector(phase_info.roi_measured_phase2, phase_info.roi_measured_phase2_display);
         }
     }
 }
 // need pay attention to the angle info and see if angle is increasing from zero. (PASS)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // Simulation part
 
@@ -276,13 +307,13 @@ torch::Tensor tensor_cal_euclidean_dist(
 // BUG: No calculation, click clear data it crash
 void clear_data()
 {
-    ROI_data.roi_Tm0_abs.clear();
-    ROI_data.roi_Tm1_abs.clear();
-    ROI_data.roi_Tm2_abs.clear();
+    ROI_data.roi_Tm_sub_abs.clear();
+    ROI_data.roi_Tm_sam_abs.clear();
+    ROI_data.roi_Tm_sam_sub_abs.clear();
     ROI_data.roi_freqsTHz.clear();
-    ROI_data.roi_Tm0 = torch::empty({0});
-    ROI_data.roi_Tm1 = torch::empty({0});
-    ROI_data.roi_Tm2 = torch::empty({0});
+    ROI_data.roi_Tm_sub = torch::empty({0});
+    ROI_data.roi_Tm_sam = torch::empty({0});
+    ROI_data.roi_Tm_sam_sub = torch::empty({0});
     ROI_data.roi_w = torch::empty({0});
     ROI_data.L = torch::empty({0});
 
@@ -300,22 +331,30 @@ void clear_data()
     phase_info.controlled_phase_delay = 0;
     phase_info.roi_measured_phase1 = torch::empty({0});
     phase_info.roi_measured_phase2 = torch::empty({0});
+    phase_info.measured_phase0_display.clear();
+    phase_info.measured_phase1_display.clear();
+    phase_info.measured_phase2_display.clear();
+    phase_info.roi_measured_phase0_display.clear();
+    phase_info.roi_measured_phase1_display.clear();
+    phase_info.roi_measured_phase2_display.clear();
 
     cri.n2.clear();
     cri.k2.clear();
 
-    thickness_info.thickarry.clear();
-    thickness_info.thick_error.clear();
+    // thickness_info.thickarry.clear();
+    // thickness_info.thick_error.clear();
+    gpd.gpd_sub = torch::empty({0});
+    gpd.gpd_sam = torch::empty({0});
+    gpd.gpd_sam_sub = torch::empty({0});
 
-    c_t_dataset.Tm0 = torch::empty({0});
-    c_t_dataset.Tm1 = torch::empty({0});
-    c_t_dataset.Tm2 = torch::empty({0});
-    c_t_dataset.Tm0_abs.clear();
-    c_t_dataset.Tm1_abs.clear();
-    c_t_dataset.Tm2_abs.clear();
+    c_t_dataset.Tm_sub = torch::empty({0});
+    c_t_dataset.Tm_sam = torch::empty({0});
+    c_t_dataset.Tm_sam_sub = torch::empty({0});
+    c_t_dataset.Tm_sub_abs.clear();
+    c_t_dataset.Tm_sam_abs.clear();
+    c_t_dataset.Tm_sam_sub_abs.clear();
 
     spectrum_container.clear();
-
 }
 
 
@@ -329,7 +368,7 @@ void prepare_network_prams()
 
     // torch::Tensor phase_measured;
 
-    int size = ROI_data.roi_Tm1.size(0);
+    int size = ROI_data.roi_Tm_sam.size(0);
 
     cal_param.n1 = torch::ones({size}, torch::kFloat);
     cal_param.k1 = torch::zeros({size}, torch::kFloat);
@@ -462,7 +501,7 @@ void extraction_freestanding(std::string lr, std::string max_ep, std::string fro
     get_phase(from, to);
     prepare_network_prams();
 
-    ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm1, phase_info.roi_measured_phase1, ROI_data.roi_w);
+    ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm_sam, phase_info.roi_measured_phase1, ROI_data.roi_w);
     torch::optim::Adam optimizer(
         { extraction_model.n2, extraction_model.k2 }, torch::optim::AdamOptions(lr_)
     );
@@ -491,7 +530,7 @@ void extraction_thickness_freestanding(std::string lr, std::string max_ep, std::
     // this mode need two parameterset and need Tm1 and Tm2
     isTraining = true;
 
-    thickness_info.thick_error.clear();
+    // thickness_info.thick_error.clear();
 
     float lr_ = std::stod(lr);
     int max_epochs = std::stoi(max_ep);
@@ -500,82 +539,82 @@ void extraction_thickness_freestanding(std::string lr, std::string max_ep, std::
     // two step optimization, first step:
     set_ROI_dataset(from, to);
     get_phase(from, to);
-
+}
     // std::cout << "thickarray size: " << thickness_info.thickarry.size() << std::endl;
     // std::cout << "first thickness: " << thickness_info.thickarry[0] << std::endl;
 
-    // start the loop here
-    for (const float&  value : thickness_info.thickarry) 
-    {
-        // std::cout << "current loop thickness: " << value << std::endl;
+//     // start the loop here
+//     for (const float&  value : thickness_info.thickarry) 
+//     {
+//         // std::cout << "current loop thickness: " << value << std::endl;
 
-        prepare_network_prams();
-        cal_param.L = torch::tensor({value}, torch::kFloat);
+//         prepare_network_prams();
+//         cal_param.L = torch::tensor({value}, torch::kFloat);
 
-        std::cout << "current tried L in opt: " << std::to_string(cal_param.L.item<float>()) << std::endl;
-        logger.Log("Current verifing thickness: " + std::to_string(cal_param.L.item<float>()));
+//         std::cout << "current tried L in opt: " << std::to_string(cal_param.L.item<float>()) << std::endl;
+//         logger.Log("Current verifing thickness: " + std::to_string(cal_param.L.item<float>()));
 
-        // dataset empty check.
-        if (ROI_data.roi_Tm2.numel() == 0)
-        {
-            logger.Log(DataLogger::ERROR, "Please load second complex transmission dataset");
-            return;
-        }
+//         // dataset empty check.
+//         if (ROI_data.roi_Tm_sam_sub.numel() == 0)
+//         {
+//             logger.Log(DataLogger::ERROR, "Please load second complex transmission dataset");
+//             return;
+//         }
 
-        ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm1, phase_info.roi_measured_phase1, ROI_data.roi_w);
-        torch::optim::Adam optimizer(
-            { extraction_model.n2, extraction_model.k2 }, torch::optim::AdamOptions(lr_)
-        );
+//         ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm_sam, phase_info.roi_measured_phase1, ROI_data.roi_w);
+//         torch::optim::Adam optimizer(
+//             { extraction_model.n2, extraction_model.k2 }, torch::optim::AdamOptions(lr_)
+//         );
 
-        logger.Log("Start first step optimization");
-        std::pair<std::unordered_map<std::string, std::vector<float>>, std::vector<torch::Tensor>> ret = train_step(extraction_model, optimizer, max_epochs, device);
+//         logger.Log("Start first step optimization");
+//         std::pair<std::unordered_map<std::string, std::vector<float>>, std::vector<torch::Tensor>> ret = train_step(extraction_model, optimizer, max_epochs, device);
 
-        torch::Tensor optimal_n2 = ret.second[0];   // n2
-        torch::Tensor optimal_k2 = ret.second[1];   // k2
-        torch::Tensor L_optimal = ret.second[2];   // L
+//         torch::Tensor optimal_n2 = ret.second[0];   // n2
+//         torch::Tensor optimal_k2 = ret.second[1];   // k2
+//         torch::Tensor L_optimal = ret.second[2];   // L
 
-        tensor2vector(optimal_n2, cri.n2);
-        tensor2vector(optimal_k2, cri.k2);
+//         tensor2vector(optimal_n2, cri.n2);
+//         tensor2vector(optimal_k2, cri.k2);
 
-        //pass n2 k2 to second model
-        cal_param.n2 = optimal_n2;
-        cal_param.k2 = optimal_k2;
-        cal_param.n_grad = false;
-        cal_param.L_grad = true;
+//         //pass n2 k2 to second model
+//         cal_param.n2 = optimal_n2;
+//         cal_param.k2 = optimal_k2;
+//         cal_param.n_grad = false;
+//         cal_param.L_grad = true;
 
-        logger.Log("Start second step optimization");
+//         logger.Log("Start second step optimization");
 
-        ExtractIndexNetwork extraction_model2(cal_param, ROI_data.roi_Tm2, phase_info.roi_measured_phase2, ROI_data.roi_w);
-        torch::optim::Adam optimizer2(
-            { extraction_model2.L }, torch::optim::AdamOptions(lr_)
-        );
+//         ExtractIndexNetwork extraction_model2(cal_param, ROI_data.roi_Tm_sam_sub, phase_info.roi_measured_phase2, ROI_data.roi_w);
+//         torch::optim::Adam optimizer2(
+//             { extraction_model2.L }, torch::optim::AdamOptions(lr_)
+//         );
 
-        std::pair<std::unordered_map<std::string, std::vector<float>>, std::vector<torch::Tensor>> ret2 = train_step(extraction_model2, optimizer2, max_epochs, device);
+//         std::pair<std::unordered_map<std::string, std::vector<float>>, std::vector<torch::Tensor>> ret2 = train_step(extraction_model2, optimizer2, max_epochs, device);
         
-        torch::Tensor L_new = ret2.second[2];
+//         torch::Tensor L_new = ret2.second[2];
 
-        std::cout << "After two optimization: " << std::endl;
-        std::cout << "L_optimal: " << std::to_string(L_optimal.item<float>()) << std::endl;
-        std::cout << "L_new: " << std::to_string(L_new.item<float>()) << std::endl;
-        std::cout << "--------------------------------------------" << std::endl;
+//         std::cout << "After two optimization: " << std::endl;
+//         std::cout << "L_optimal: " << std::to_string(L_optimal.item<float>()) << std::endl;
+//         std::cout << "L_new: " << std::to_string(L_new.item<float>()) << std::endl;
+//         std::cout << "--------------------------------------------" << std::endl;
 
-        logger.Log("-------------------");
-        logger.Log("thickness in 1st step: " + std::to_string(L_optimal.item<float>()));
-        logger.Log("thickness in 2nd step: " + std::to_string(L_new.item<float>()));
+//         logger.Log("-------------------");
+//         logger.Log("thickness in 1st step: " + std::to_string(L_optimal.item<float>()));
+//         logger.Log("thickness in 2nd step: " + std::to_string(L_new.item<float>()));
 
-        // calculate error
-        float cal_phase_delay = (L_new - L_optimal).item<float>();
-        float thickness_error = std::abs((cal_phase_delay - induced_phase_delay) * 1e4);
+//         // calculate error
+//         float cal_phase_delay = (L_new - L_optimal).item<float>();
+//         float thickness_error = std::abs((cal_phase_delay - 0) * 1e4);
 
-        logger.Log("thickness error: " + std::to_string(thickness_error));
-        logger.Log("-------------------");
+//         logger.Log("thickness error: " + std::to_string(thickness_error));
+//         logger.Log("-------------------");
 
-        thickness_info.thick_error.push_back(thickness_error);
-        first_load_plot = true;
+//         thickness_info.thick_error.push_back(thickness_error);
+//         first_load_plot = true;
 
-    }
+//     }
 
-    isTraining = false;
-    first_load_plot = true;
+//     isTraining = false;
+//     first_load_plot = true;
 
-}
+// }

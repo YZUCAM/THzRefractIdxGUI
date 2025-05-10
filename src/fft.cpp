@@ -34,8 +34,13 @@ std::vector<float> construct_freqs(std::vector<float> t)
     int N = t.size();
     int n = N/2 + 1;
 
-    float t_min = *std::min_element(t.begin(), t.end());
-    float t_max = *std::max_element(t.begin(), t.end());
+    std::vector<float> t_unit_s;
+    t_unit_s.resize(t.size());
+    // freqsTHz(freqs.size());
+    std::transform(t.begin(), t.end(), t_unit_s.begin(), [](auto x){return x * 1e-12;});
+
+    float t_min = *std::min_element(t_unit_s.begin(), t_unit_s.end());
+    float t_max = *std::max_element(t_unit_s.begin(), t_unit_s.end());
     float freq_end = N / (t_max - t_min);
     
 

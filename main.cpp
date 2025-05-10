@@ -4,10 +4,8 @@
 
 // third version change backend function
 // TODO add FP mode selection button (check box)
-// change second plot to linear plot
 // second plot set as amplitude fitting data
 // fourth plot set as phase fitting data.
-// fix the second plot x axis unit issue
 // use only simple model with known thickness.
 
 
@@ -55,7 +53,7 @@ bool know_FP = false;
 std::string selected_file_type = "";
 std::string point = "";
 
-float induced_phase_delay;
+float sub_thickness;
 
 // float progress = 0.0;
 
@@ -136,7 +134,6 @@ int main(int, char**)
     char chip_gp[128] = "0";
     char sam_gp[128] = "0";
     char sam_sub_gp[128] = "0";
-    char phase_delay[128] = "0";
     char ROI_from[128] = "";
     char ROI_to[128] = "";
     char learning_rate[128] = "";
@@ -144,6 +141,7 @@ int main(int, char**)
     // char L[128] = "";
     
     char Thickness[128] = "0";
+    char phase_delay[128] = "0";    // substrate thickness
     
 
 
@@ -244,24 +242,24 @@ int main(int, char**)
                 if (mode == 0)
                 {
                     
-                    ImPlot::PlotLine("Tm_sam", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm1_abs.data(), ROI_data.roi_Tm1_abs.size());
+                    ImPlot::PlotLine("Tm_sam", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm_sam_abs.data(), ROI_data.roi_Tm_sam_abs.size());
                 }
                 else
                 {
-                    ImPlot::PlotLine("Tm_sub", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm0_abs.data(), ROI_data.roi_Tm0_abs.size());
-                    ImPlot::PlotLine("Tm_sam_sub", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm2_abs.data(), ROI_data.roi_Tm2_abs.size());
+                    ImPlot::PlotLine("Tm_sub", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm_sub_abs.data(), ROI_data.roi_Tm_sub_abs.size());
+                    ImPlot::PlotLine("Tm_sam_sub", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm_sam_sub_abs.data(), ROI_data.roi_Tm_sam_sub_abs.size());
                 }
             }
             else
             {
                 if (mode == 0)
                 {
-                    ImPlot::PlotLine("Tm_sam", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm1_abs.data(), c_t_dataset.Tm1_abs.size());
+                    ImPlot::PlotLine("Tm_sam", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm_sam_abs.data(), c_t_dataset.Tm_sam_abs.size());
                 }
                 else
                 {
-                    ImPlot::PlotLine("Tm_sub", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm0_abs.data(), c_t_dataset.Tm0_abs.size());
-                    ImPlot::PlotLine("Tm_sam_sub", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm2_abs.data(), c_t_dataset.Tm2_abs.size());
+                    ImPlot::PlotLine("Tm_sub", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm_sub_abs.data(), c_t_dataset.Tm_sub_abs.size());
+                    ImPlot::PlotLine("Tm_sam_sub", spectrum_container["ref"].freqsTHz.data(), c_t_dataset.Tm_sam_sub_abs.data(), c_t_dataset.Tm_sam_sub_abs.size());
                 }
             }
             ImPlot::EndPlot();
@@ -269,7 +267,7 @@ int main(int, char**)
         ImGui::End();
 
 
-        
+
         // Third Panel in the Left
         ImGui::SetNextWindowPos(ImVec2(0, (int)windowHeight/2));
         ImGui::SetNextWindowSize(ImVec2((int)(windowWidth - right_window_width)/2,(int)windowHeight/2));
@@ -312,9 +310,33 @@ int main(int, char**)
         {
             ImPlot::SetupAxes("Frequency (Hz)", "Phase (rad)");
             ImPlot::SetupLegend(ImPlotLocation_NorthEast);
-            ImPlot::PlotLine("Phi_sub", thickness_info.thickarry.data(), thickness_info.thick_error.data(), thickness_info.thick_error.size());
-            // ImPlot::PlotLine("Phi_sam", thickness_info.thickarry.data(), thickness_info.thick_error.data(), thickness_info.thick_error.size());
-            // ImPlot::PlotLine("Phi_sam_chip", thickness_info.thickarry.data(), thickness_info.thick_error.data(), thickness_info.thick_error.size());
+            // ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
+            if (roi_selector)
+            {
+                if (mode == 0)
+                {
+                    
+                    ImPlot::PlotLine("Phi_sam", ROI_data.roi_freqsTHz.data(), phase_info.roi_measured_phase1_display.data(), phase_info.roi_measured_phase1_display.size());
+                }
+                else
+                {
+                    ImPlot::PlotLine("Phi_sub", ROI_data.roi_freqsTHz.data(), phase_info.roi_measured_phase0_display.data(), phase_info.roi_measured_phase0_display.size());
+                    ImPlot::PlotLine("Phi_sam_sub", ROI_data.roi_freqsTHz.data(), phase_info.roi_measured_phase2_display.data(), phase_info.roi_measured_phase2_display.size());
+                }
+            }
+            else
+            {
+                if (mode == 0)
+                {
+                    ImPlot::PlotLine("Phi_sam", spectrum_container["ref"].freqsTHz.data(), phase_info.measured_phase1_display.data(), phase_info.measured_phase1_display.size());
+                }
+                else
+                {
+                    ImPlot::PlotLine("Phi_sub", spectrum_container["ref"].freqsTHz.data(), phase_info.measured_phase0_display.data(), phase_info.measured_phase0_display.size());
+                    ImPlot::PlotLine("Phi_sam_sub", spectrum_container["ref"].freqsTHz.data(), phase_info.measured_phase2_display.data(), phase_info.measured_phase2_display.size());
+                }
+            }
+            
             ImPlot::EndPlot();
         }         
 
@@ -444,6 +466,7 @@ int main(int, char**)
             // 1. initial thickness info data
             // init_thickness_scan(std::string(chip_gp), std::string(sam_gp), std::string(sam_chip_gp));
             // init the global phase for three transmission spectrum 
+            init_global_phase(std::string(chip_gp),std::string(sam_gp),std::string(sam_sub_gp));
         }
         // ImGui::SetCursorPos(ImVec2(10, 310));
         // ImGui::Text((std::string("Optimized Thickness: ") + std::string(OptThickness)).c_str());
@@ -473,7 +496,7 @@ int main(int, char**)
         ImGui::SameLine();
         if (ImGui::Button(" Set Sub "))
         {
-            induced_phase_delay = std::stof(std::string(phase_delay));
+            sub_thickness = std::stof(std::string(phase_delay));
             logger.Log(DataLogger::INFO, "Set substrate thickness: " + std::string(phase_delay));
         }
 
@@ -533,6 +556,14 @@ int main(int, char**)
             // logger.Log(DataLogger::INFO, std::string(ROI_from));
             // logger.Log(DataLogger::INFO, std::string(ROI_to));
             set_ROI_dataset(std::string(ROI_from), std::string(ROI_to));
+            if (!gpd.gpd_sub.size(0))
+            {
+                logger.Log(DataLogger::ERROR, "Invalid global phase, please init global phase first.");
+            }
+            else
+            {
+                get_phase(std::string(ROI_from), std::string(ROI_to));
+            }
             roi_selector = true;
             first_load_plot = true;
         }
