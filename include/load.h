@@ -126,6 +126,6 @@ void read_csv_columns(const std::string& filename, std::vector<float>& c1,
 void load_spectrum(const std::string& filename, spectrum_dataset& data);
 
 void load_dataset_spectrum(const std::string& filename, spectrum_dataset& data1, 
-    spectrum_dataset& data2, spectrum_dataset& data3, spectrum_dataset& data4);
+    spectrum_dataset& data2, spectrum_dataset& data3);
 
 

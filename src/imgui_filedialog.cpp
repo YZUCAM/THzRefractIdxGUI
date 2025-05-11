@@ -38,7 +38,7 @@ void drawFileDialogGui()
             // NEED A PROMPT TO TELL WHAT NEED TO BE LOAD
             if (selected_file_type == "dataset")
             {
-                load_dataset_spectrum(filePathName, ref_spectrum, chip_spectrum, sam_spectrum, sam_chip_spectrum);
+                load_dataset_spectrum(filePathName, ref_spectrum, chip_spectrum, sam_chip_spectrum);
                 spectrum_container["ref"] = std::move(ref_spectrum);
                 ref_selected = true;
                 message = "Load reference success.";
@@ -49,10 +49,10 @@ void drawFileDialogGui()
                 message = "Load substrate success.";
                 logger.Log(DataLogger::INFO, message);
 
-                spectrum_container["sam"] = std::move(sam_spectrum);
-                sam_selected = true;
-                message = "Load sample success.";
-                logger.Log(DataLogger::INFO, message);
+                // spectrum_container["sam"] = std::move(sam_spectrum);
+                // sam_selected = true;
+                // message = "Load sample success.";
+                // logger.Log(DataLogger::INFO, message);
 
                 spectrum_container["sam_sub"] = std::move(sam_chip_spectrum);
                 sam_sub_selected = true;

@@ -373,10 +373,17 @@ void clear_data()
 // for mode 1
 void prepare_network_prams()
 {
+    int size = 0;
     // torch::Tensor phase_measured;
-
-    int size = ROI_data.roi_Tm_sam.size(0);
-
+    if (ROI_data.roi_Tm_sam.numel() != 0)
+    {
+        size = ROI_data.roi_Tm_sam.size(0);
+    }
+    else
+    {
+        size = ROI_data.roi_Tm_sam_sub.size(0);
+    }
+    
     cal_param.n1 = torch::ones({size}, torch::kFloat);
     cal_param.k1 = torch::zeros({size}, torch::kFloat);
 

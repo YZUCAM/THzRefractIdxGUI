@@ -66,7 +66,7 @@ void load_spectrum(const std::string& filename, spectrum_dataset& data)
 
 
 // load batch of spectrum 
-void load_dataset_spectrum(const std::string& filename, spectrum_dataset& data1, spectrum_dataset& data2, spectrum_dataset& data3, spectrum_dataset& data4)
+void load_dataset_spectrum(const std::string& filename, spectrum_dataset& data1, spectrum_dataset& data2, spectrum_dataset& data3)
 {
 
     data1.times.clear();
@@ -75,8 +75,8 @@ void load_dataset_spectrum(const std::string& filename, spectrum_dataset& data1,
     data2.Tm.clear();
     data3.times.clear();
     data3.Tm.clear();
-    data4.times.clear();
-    data4.Tm.clear();
+    // data4.times.clear();
+    // data4.Tm.clear();
 
     try 
     {
@@ -90,7 +90,7 @@ void load_dataset_spectrum(const std::string& filename, spectrum_dataset& data1,
             throw std::runtime_error("Failed to read header line");
 
         // Initialize CSVReader with FILE* (after header skipped)
-        io::CSVReader<8, io::trim_chars<>, io::no_quote_escape<','>> in(filename, fp);
+        io::CSVReader<6, io::trim_chars<>, io::no_quote_escape<','>> in(filename, fp);
         // io::CSVReader<8> in(filename);
         // read csv line by line in the order.
         // val1, val3, val5, val7 must be time unit in s
@@ -104,12 +104,12 @@ void load_dataset_spectrum(const std::string& filename, spectrum_dataset& data1,
         float val5;
         float val6;
 
-        float val7;
-        float val8;
+        // float val7;
+        // float val8;
 
         int count = 0;
 
-    while (in.read_row(val1, val2, val3, val4, val5, val6, val7, val8)) 
+    while (in.read_row(val1, val2, val3, val4, val5, val6)) 
     {
         // if (count++ < skip_rows) continue;
 
@@ -122,8 +122,8 @@ void load_dataset_spectrum(const std::string& filename, spectrum_dataset& data1,
         data3.times.push_back(val5);
         data3.Tm.push_back(val6);
 
-        data4.times.push_back(val7);
-        data4.Tm.push_back(val8);
+        // data4.times.push_back(val7);
+        // data4.Tm.push_back(val8);
     }
     } 
     catch (const std::exception& e) 
@@ -155,13 +155,13 @@ void load_dataset_spectrum(const std::string& filename, spectrum_dataset& data1,
     data3.fty_abs.resize(abs_result3.size(0));
     std::memcpy(data3.fty_abs.data(), abs_result3.data_ptr<float>(), abs_result3.numel() * sizeof(float));
 
-    data4.fty = fft(data4.Tm);
-    data4.freqs = construct_freqs(data4.times);
-    data4.freqsTHz.resize(data4.freqs.size());
-    std::transform(data4.freqs.begin(), data4.freqs.end(), data4.freqsTHz.begin(), [](auto x){return x * 1e-12;});
-    auto abs_result4 = torch::abs(data4.fty).to(torch::kFloat);
-    data4.fty_abs.resize(abs_result4.size(0));
-    std::memcpy(data4.fty_abs.data(), abs_result4.data_ptr<float>(), abs_result4.numel() * sizeof(float));
+    // data4.fty = fft(data4.Tm);
+    // data4.freqs = construct_freqs(data4.times);
+    // data4.freqsTHz.resize(data4.freqs.size());
+    // std::transform(data4.freqs.begin(), data4.freqs.end(), data4.freqsTHz.begin(), [](auto x){return x * 1e-12;});
+    // auto abs_result4 = torch::abs(data4.fty).to(torch::kFloat);
+    // data4.fty_abs.resize(abs_result4.size(0));
+    // std::memcpy(data4.fty_abs.data(), abs_result4.data_ptr<float>(), abs_result4.numel() * sizeof(float));
 
 }
 

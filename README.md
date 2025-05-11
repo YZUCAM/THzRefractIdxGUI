@@ -37,3 +37,18 @@ The sample is deposited on the substrate. Select Mode to 2, Loading reference an
 **Fabry–Pérot Effect**<br>
 If the sample is thin enough, you may should consider Fabry–Pérot Effect. Ticking the Fabry–Pérot check box, the model will include the Fabry–Pérot Effect to the simulation.
 
+**Data Format**<br>
+The required data format is csv format.<br> 
+For single THz trace, two column is required with first column is time, unit is ps, the second column is THz transmission .<br>
+For dataset, six column is required. 
+- Col1 and col2 is time and intensity for blank reference trance. 
+- Col3 and col4 is time and intensity for substrate. 
+- Col5 and col6 is time and intensity for sample on the substrate.
+
+
+**Global Phase Delay**<br>
+Those time delays are easily identified in the time domain spectrum. They are just those pulse delay. 
+- Sub: the time difference between substrate trace and blank reference trace (used in mode 2).
+- Sample: the time difference between sample trace and blank reference trace (used in mode 1).
+- Sample+Sub: the time difference between sample on the substrate and the substrate trace (used in mode 2)
+
