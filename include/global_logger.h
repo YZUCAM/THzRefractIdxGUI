@@ -13,6 +13,7 @@ extern std::atomic<bool> stopFlag;
 extern DataLogger logger;
 
 extern bool know_thickness;
+extern bool know_FP;
 extern bool ref_selected;
 extern bool chip_selected;
 extern bool sam_selected;
@@ -41,6 +42,8 @@ extern phase_dataset phase_info;
 extern complex_refractive_index cri;
 
 extern global_phase_delay gpd;
+
+extern fitting_dataset cal_results;
 
 
 // under 1280 x 720 main window size, the each widget size define here:

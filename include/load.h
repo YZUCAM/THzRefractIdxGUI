@@ -62,7 +62,8 @@ struct roi_dataset
     std::vector<float> roi_Tm_sam_abs;
     std::vector<float> roi_Tm_sam_sub_abs;
     std::vector<float> roi_freqsTHz;
-    torch::Tensor L;
+    torch::Tensor L;    // sam
+    torch::Tensor L2;   // sub
 };
 
 struct cal_parameters
@@ -79,7 +80,6 @@ struct cal_parameters
     // torch::Tensor phase_measured;
     bool n_grad;
     bool L_grad;
-    bool FP;
 };
 
 struct global_phase_delay
@@ -110,10 +110,14 @@ struct complex_refractive_index
     // float thickness;
 };
 
-struct thickness_finder
+struct fitting_dataset
 {
-    std::vector<float> thickarry;
-    std::vector<float> thick_error; 
+    std::vector<float> T_cal_sam;
+    std::vector<float> T_cal_sub; 
+    std::vector<float> T_cal_sam_sub;
+    std::vector<float> Phi_cal_sub;
+    std::vector<float> Phi_cal_sam;
+    std::vector<float> Phi_cal_sam_sub;
 };
 
 void read_csv_columns(const std::string& filename, std::vector<float>& c1,

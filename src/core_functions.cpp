@@ -18,6 +18,8 @@ complex_refractive_index cri;
 
 global_phase_delay gpd;
 
+fitting_dataset cal_results;
+
 
 // convert tensor data to vector data for visulization
 void tensor2vector(const torch::Tensor& t, std::vector<float>& v)
@@ -326,7 +328,6 @@ void clear_data()
     cal_param.L = torch::empty({0});
     cal_param.n_grad = true;
     cal_param.L_grad = false;
-    cal_param.FP = true;
 
     phase_info.controlled_phase_delay = 0;
     phase_info.roi_measured_phase1 = torch::empty({0});
@@ -354,6 +355,13 @@ void clear_data()
     c_t_dataset.Tm_sam_abs.clear();
     c_t_dataset.Tm_sam_sub_abs.clear();
 
+    cal_results.T_cal_sam.clear();
+    cal_results.T_cal_sub.clear();
+    cal_results.T_cal_sam_sub.clear();
+    cal_results.Phi_cal_sam.clear();
+    cal_results.Phi_cal_sam_sub.clear();
+    cal_results.Phi_cal_sub.clear();
+
     spectrum_container.clear();
 }
 
@@ -362,10 +370,9 @@ void clear_data()
 
 
 
-
+// for mode 1
 void prepare_network_prams()
 {
-
     // torch::Tensor phase_measured;
 
     int size = ROI_data.roi_Tm_sam.size(0);
@@ -379,11 +386,9 @@ void prepare_network_prams()
     cal_param.n3 = torch::ones({size}, torch::kFloat);
     cal_param.k3 = torch::zeros({size}, torch::kFloat);
 
-    cal_param.L = ROI_data.L;
+    cal_param.L = ROI_data.L;   // sample thickness
     cal_param.n_grad = true;
     cal_param.L_grad = false;
-    cal_param.FP = false;
-
 }
 
 void update_network_prams(cal_parameters& parameters, torch::Tensor& opt_n, torch::Tensor& opt_k, torch::Tensor new_L)
@@ -395,11 +400,11 @@ void update_network_prams(cal_parameters& parameters, torch::Tensor& opt_n, torc
 
 
 
-ExtractIndexNetwork::ExtractIndexNetwork(cal_parameters& prams, torch::Tensor& ctd, torch::Tensor& pd, torch::Tensor& w)
+ExtractIndexNetwork::ExtractIndexNetwork(cal_parameters& prams, torch::Tensor& ctd, torch::Tensor& pd, torch::Tensor& w, bool FP)
     : n1(prams.n1), k1(prams.k1), n2(prams.n2), k2(prams.k2),
       n3(prams.n3), k3(prams.k3), L(prams.L), 
       targetSpectrum(ctd), phase_measured(pd), w(w),
-      n_grad(prams.n_grad), L_grad(prams.L_grad), FP(prams.FP) {
+      n_grad(prams.n_grad), L_grad(prams.L_grad), FP(FP) {
     // Constructor body can be left empty as initialization happens in the initializer list
     this->n2 = register_parameter("n2", n2, n_grad);
     this->k2 = register_parameter("k2", k2, n_grad);
@@ -467,8 +472,8 @@ train_step(
     // Return dictionary and important tensors (n2, k2, L)
     std::vector<torch::Tensor> params = {
         model.n2.cpu().detach().clone(),
-        model.k2.cpu().detach().clone(),
-        model.L.cpu().detach().clone()
+        model.k2.cpu().detach().clone()
+        // model.L.cpu().detach().clone()
     };
     
     return {results, params};
@@ -486,7 +491,7 @@ void extraction_freestanding(std::string lr, std::string max_ep, std::string fro
     }
     if (cal_param.L.item<float>()== 0)
     {
-        logger.Log(DataLogger::ERROR, "Opt-thickness should not be 0.");
+        logger.Log(DataLogger::ERROR, "Sample-thickness should not be 0.");
         return;
     }
     isTraining = true;
@@ -501,7 +506,7 @@ void extraction_freestanding(std::string lr, std::string max_ep, std::string fro
     get_phase(from, to);
     prepare_network_prams();
 
-    ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm_sam, phase_info.roi_measured_phase1, ROI_data.roi_w);
+    ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm_sam, phase_info.roi_measured_phase1, ROI_data.roi_w, know_FP);
     torch::optim::Adam optimizer(
         { extraction_model.n2, extraction_model.k2 }, torch::optim::AdamOptions(lr_)
     );
@@ -510,36 +515,152 @@ void extraction_freestanding(std::string lr, std::string max_ep, std::string fro
 
     torch::Tensor optimal_n2 = ret.second[0];   // n2
     torch::Tensor optimal_k2 = ret.second[1];   // k2
-    torch::Tensor optimal_thickness = ret.second[2];   // L
+    // torch::Tensor optimal_thickness = ret.second[2];   // L
 
     tensor2vector(optimal_n2, cri.n2);
     tensor2vector(optimal_k2, cri.k2);
 
+    // generate simulation curve
+    auto [T_cal, phase_extra_ROI] = tensor_cal_transmission_phase(cal_param.n1, cal_param.k1, optimal_n2, optimal_k2, cal_param.n3, cal_param.k3, ROI_data.roi_w, cal_param.L, know_FP);
+    auto abs_T_cal = torch::abs(T_cal).to(torch::kFloat);
+    auto cal_phase = phase_extra_ROI + ((optimal_n2 - cal_param.n1) * ROI_data.roi_w * cal_param.L / C);
+    
+    // need check sam or sub or sam_sub
+    tensor2vector(abs_T_cal, cal_results.T_cal_sam);
+    tensor2vector(cal_phase, cal_results.Phi_cal_sam);
+
     isTraining = false;
     first_load_plot = true;
-
 }
 
 
 
-void extraction_thickness_freestanding(std::string lr, std::string max_ep, std::string from, std::string to)
-{
 
-    std::cout << "enter extraction_thickness_freestanding" << std::endl;
 
-    // this mode need two parameterset and need Tm1 and Tm2
+
+
+
+
+
+void extraction_onsubstrate(std::string lr, std::string max_ep, std::string from, std::string to)
+{   
+    if (cal_param.L.numel() == 0)
+    {
+        logger.Log(DataLogger::ERROR, "Model Parameters are empty, please set parameters.");
+        return;
+    }
+    if (cal_param.L.item<float>()== 0)
+    {
+        logger.Log(DataLogger::ERROR, "Sample or Substrate thickness should not be 0.");
+        return;
+    }
     isTraining = true;
 
-    // thickness_info.thick_error.clear();
+    // std::cout<< "enter extraction_freestanding" << std::endl;
 
-    float lr_ = std::stod(lr);
+    float lr_ = std::stof(lr);
     int max_epochs = std::stoi(max_ep);
     torch::Device device(torch::kCPU);
 
-    // two step optimization, first step:
     set_ROI_dataset(from, to);
     get_phase(from, to);
+    prepare_network_prams();
+    if (ROI_data.L2.numel() == 0)
+    {
+        logger.Log(DataLogger::ERROR, "Please set thickness for substrate.");
+        return;
+    }
+    cal_param.L = ROI_data.L2;  //set susbtrate thickness
+
+    ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm_sub, phase_info.roi_measured_phase0, ROI_data.roi_w, know_FP);
+    torch::optim::Adam optimizer(
+        { extraction_model.n2, extraction_model.k2 }, torch::optim::AdamOptions(lr_)
+    );
+
+    std::pair<std::unordered_map<std::string, std::vector<float>>, std::vector<torch::Tensor>> ret = train_step(extraction_model, optimizer, max_epochs, device);
+
+    logger.Log("Substrate complex refractive index extracted finished.");
+    logger.Log("=============");
+
+    // generate simulation curve
+    auto [T_cal0, phase_extra_ROI0] = tensor_cal_transmission_phase(cal_param.n1, cal_param.k1, ret.second[0], ret.second[1], cal_param.n3, cal_param.k3, ROI_data.roi_w, cal_param.L, know_FP);
+    auto abs_T_cal0 = torch::abs(T_cal0).to(torch::kFloat);
+    auto cal_phase0 = phase_extra_ROI0 + ((ret.second[0] - cal_param.n1) * ROI_data.roi_w * cal_param.L / C);
+    
+    // need check sam or sub or sam_sub
+    tensor2vector(abs_T_cal0, cal_results.T_cal_sub);
+    tensor2vector(cal_phase0, cal_results.Phi_cal_sub);
+
+
+    // start second optimization
+    prepare_network_prams();
+    cal_param.n3 = ret.second[0];
+    cal_param.k3 = ret.second[1];
+    cal_param.L = ROI_data.L;
+
+    ExtractIndexNetwork extraction_model2(cal_param, ROI_data.roi_Tm_sam_sub, phase_info.roi_measured_phase2, ROI_data.roi_w, know_FP);
+    torch::optim::Adam optimizer2(
+        { extraction_model2.n2, extraction_model2.k2 }, torch::optim::AdamOptions(lr_)
+    );
+
+    std::pair<std::unordered_map<std::string, std::vector<float>>, std::vector<torch::Tensor>> ret2 = train_step(extraction_model2, optimizer2, max_epochs, device);
+
+
+    torch::Tensor optimal_n2 = ret2.second[0];   // n2
+    torch::Tensor optimal_k2 = ret2.second[1];   // k2
+    // torch::Tensor optimal_thickness = ret.second[2];   // L
+
+    tensor2vector(optimal_n2, cri.n2);
+    tensor2vector(optimal_k2, cri.k2);
+
+    // generate simulation curve
+    auto [T_cal, phase_extra_ROI] = tensor_cal_transmission_phase(cal_param.n1, cal_param.k1, optimal_n2, optimal_k2, cal_param.n3, cal_param.k3, ROI_data.roi_w, cal_param.L, know_FP);
+    auto abs_T_cal = torch::abs(T_cal).to(torch::kFloat);
+    auto cal_phase = phase_extra_ROI + ((optimal_n2 - cal_param.n1) * ROI_data.roi_w * cal_param.L / C);
+    
+    // need check sam or sub or sam_sub
+    tensor2vector(abs_T_cal, cal_results.T_cal_sam_sub);
+    tensor2vector(cal_phase, cal_results.Phi_cal_sam_sub);
+
+    isTraining = false;
+    first_load_plot = true;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// void extraction_thickness_freestanding(std::string lr, std::string max_ep, std::string from, std::string to)
+// {
+
+//     std::cout << "enter extraction_thickness_freestanding" << std::endl;
+
+//     // this mode need two parameterset and need Tm1 and Tm2
+//     isTraining = true;
+
+//     // thickness_info.thick_error.clear();
+
+//     float lr_ = std::stod(lr);
+//     int max_epochs = std::stoi(max_ep);
+//     torch::Device device(torch::kCPU);
+
+//     // two step optimization, first step:
+//     set_ROI_dataset(from, to);
+//     get_phase(from, to);
+// }
     // std::cout << "thickarray size: " << thickness_info.thickarry.size() << std::endl;
     // std::cout << "first thickness: " << thickness_info.thickarry[0] << std::endl;
 

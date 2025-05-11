@@ -1,3 +1,8 @@
+<div align="center">
+<img src="https://raw.githubusercontent.com/YZUCAM/THzRefractIdxGUI/main/docsrc/example1.png"><br><br>
+</div>
+
+
 # Extract Complex Refractive Index from THz Spectroscopy (C++ version)
 ## About the project
 The transmission THz spectrum contains rich information about the complex refractive index of the studied materials that THz pulse passed through. With known the thickness of the studied materials, one can successfully extracted the complex refractive index at the THz regime. This handy program is designed to serve this purpose. Once the THz spectrum is loaded, the stochastic gradient descent algo will extracted the complex refractive n and k as function of the THz frequency.

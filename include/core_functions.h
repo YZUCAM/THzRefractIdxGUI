@@ -36,7 +36,7 @@ class ExtractIndexNetwork : public torch::nn::Module
 {
     public:
         // Constructor, needs to initialize tensors and parameters
-        ExtractIndexNetwork(cal_parameters& prams, torch::Tensor& ctd, torch::Tensor& pd, torch::Tensor& w);
+        ExtractIndexNetwork(cal_parameters& prams, torch::Tensor& ctd, torch::Tensor& pd, torch::Tensor& w, bool FP);
     
         // Destructor
         ~ExtractIndexNetwork() = default;
@@ -61,4 +61,4 @@ train_step(ExtractIndexNetwork& model,torch::optim::Optimizer& optimizer, int ma
 
 void extraction_freestanding(std::string lr, std::string max_ep, std::string from, std::string to);
 
-void extraction_thickness_freestanding(std::string lr, std::string max_ep, std::string from, std::string to);
+void extraction_onsubstrate(std::string lr, std::string max_ep, std::string from, std::string to);

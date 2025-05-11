@@ -241,13 +241,19 @@ int main(int, char**)
             {
                 if (mode == 0)
                 {
-                    
                     ImPlot::PlotLine("Tm_sam", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm_sam_abs.data(), ROI_data.roi_Tm_sam_abs.size());
+                    ImPlot::PushStyleVar(ImPlotStyleVar_LineWeight, 1.0f); 
+                    ImPlot::PlotLine("Tm_sam_model", ROI_data.roi_freqsTHz.data(), cal_results.T_cal_sam.data(), cal_results.T_cal_sam.size());
+                    ImPlot::PopStyleVar();
                 }
                 else
                 {
                     ImPlot::PlotLine("Tm_sub", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm_sub_abs.data(), ROI_data.roi_Tm_sub_abs.size());
                     ImPlot::PlotLine("Tm_sam_sub", ROI_data.roi_freqsTHz.data(), ROI_data.roi_Tm_sam_sub_abs.data(), ROI_data.roi_Tm_sam_sub_abs.size());
+                    ImPlot::PushStyleVar(ImPlotStyleVar_LineWeight, 1.0f); 
+                    ImPlot::PlotLine("Tm_sub_model", ROI_data.roi_freqsTHz.data(), cal_results.T_cal_sub.data(), cal_results.T_cal_sub.size());
+                    ImPlot::PlotLine("Tm_sam_sub_model", ROI_data.roi_freqsTHz.data(), cal_results.T_cal_sam_sub.data(), cal_results.T_cal_sam_sub.size());
+                    ImPlot::PopStyleVar();
                 }
             }
             else
@@ -317,11 +323,19 @@ int main(int, char**)
                 {
                     
                     ImPlot::PlotLine("Phi_sam", ROI_data.roi_freqsTHz.data(), phase_info.roi_measured_phase1_display.data(), phase_info.roi_measured_phase1_display.size());
+                    ImPlot::PushStyleVar(ImPlotStyleVar_LineWeight, 1.0f);
+                    ImPlot::PlotLine("Phi_sam_model", ROI_data.roi_freqsTHz.data(), cal_results.Phi_cal_sam.data(), cal_results.Phi_cal_sam.size());
+                    ImPlot::PopStyleVar();
                 }
                 else
                 {
                     ImPlot::PlotLine("Phi_sub", ROI_data.roi_freqsTHz.data(), phase_info.roi_measured_phase0_display.data(), phase_info.roi_measured_phase0_display.size());
                     ImPlot::PlotLine("Phi_sam_sub", ROI_data.roi_freqsTHz.data(), phase_info.roi_measured_phase2_display.data(), phase_info.roi_measured_phase2_display.size());
+
+                    ImPlot::PushStyleVar(ImPlotStyleVar_LineWeight, 1.0f);
+                    ImPlot::PlotLine("Phi_sub_model", ROI_data.roi_freqsTHz.data(), cal_results.Phi_cal_sub.data(), cal_results.Phi_cal_sub.size());
+                    ImPlot::PlotLine("Phi_sam_sub_model", ROI_data.roi_freqsTHz.data(), cal_results.Phi_cal_sam_sub.data(), cal_results.Phi_cal_sam_sub.size());
+                    ImPlot::PopStyleVar();
                 }
             }
             else
@@ -358,6 +372,27 @@ int main(int, char**)
         // ImGui::Image();
 
         // TODO
+        if (mode == 0)
+        {
+            ImGui::Text("Mode 1:");
+            ImGui::Text("Just the pure freestanding");
+            ImGui::Text("sample.");
+            ImGui::Text("Required: ");
+            ImGui::Text( "1. Reference trace.");
+            ImGui::Text( "2. Sample trace.");
+        }
+        else
+        {
+            ImGui::Text("Mode 2:");
+            ImGui::Text("Under test sample on the");
+            ImGui::Text("substrate.");
+            ImGui::Text("Required: ");
+            ImGui::Text( "1. Reference trace.");
+            ImGui::Text( "2. Substrate trace.");
+            ImGui::Text( "3. Sample trace.");
+            // ImGui::Text( "Program will extract substrate complex refractive index first,");
+            // ImGui::Text( "then use it to extract sample complex refractive index.");
+        }
 
 
         // check box for know and unknow thickness
@@ -482,7 +517,7 @@ int main(int, char**)
         ImGui::SameLine();
         if (ImGui::Button(" Set Sam "))
         {
-            ROI_data.L = torch::tensor(std::stof(std::string(Thickness)), torch::dtype(torch::kFloat));
+            ROI_data.L = 1e-3 * torch::tensor(std::stof(std::string(Thickness)), torch::dtype(torch::kFloat));
             logger.Log(DataLogger::INFO, "Thickness is set to: " + std::string(Thickness));
         }
 
@@ -497,6 +532,7 @@ int main(int, char**)
         if (ImGui::Button(" Set Sub "))
         {
             sub_thickness = std::stof(std::string(phase_delay));
+            ROI_data.L2 = 1e-3 * torch::tensor(sub_thickness, torch::dtype(torch::kFloat));
             logger.Log(DataLogger::INFO, "Set substrate thickness: " + std::string(phase_delay));
         }
 
@@ -593,12 +629,22 @@ int main(int, char**)
             //extraction refractive index interface
             stopFlag = false;
             isTraining = true;
-            //initial model parameters to avoid crash
-            prepare_network_prams();
-            if (trainingThread.joinable()){
-                trainingThread.join();}
-            trainingThread = std::thread(extraction_freestanding, std::string(learning_rate), std::string(iteration_num), std::string(ROI_from), std::string(ROI_to));
-            // trainingThread.detach();
+            if (mode == 0)
+            {
+                //initial model parameters to avoid crash
+                prepare_network_prams();
+                if (trainingThread.joinable()){
+                    trainingThread.join();}
+                trainingThread = std::thread(extraction_freestanding, std::string(learning_rate), std::string(iteration_num), std::string(ROI_from), std::string(ROI_to));
+                // trainingThread.detach();
+            }
+            else
+            {
+                prepare_network_prams();
+                if (trainingThread.joinable()){
+                    trainingThread.join();}
+                trainingThread = std::thread(extraction_onsubstrate, std::string(learning_rate), std::string(iteration_num), std::string(ROI_from), std::string(ROI_to));
+            }
             first_load_plot = true;
         }
         ImGui::EndDisabled();
@@ -670,7 +716,7 @@ int main(int, char**)
         ImGui::SetCursorPos(ImVec2(10, right_window_size.y - 28));
         ImGui::Text("App FPS: %.1f", io.Framerate);
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 200, right_window_size.y - 28));
-        ImGui::Text("By Dr. Yi  V: 0.2.1");
+        ImGui::Text("By Dr. Yi  V: 0.2.2");
         ImGui::End();
 
 

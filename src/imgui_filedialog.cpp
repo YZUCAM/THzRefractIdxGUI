@@ -128,9 +128,11 @@ void drawFileDialogGui()
                 std::memcpy(c_t_dataset.Tm_sam_abs.data(), abs_Tm1.data_ptr<float>(), abs_Tm1.numel() * sizeof(float));
             }
 
-            if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sam_sub"].Tm.empty())) 
+            // should use sam_sub/sub instead of sam_sub/ref
+            // if ((!spectrum_container["ref"].Tm.empty()) && (!spectrum_container["sam_sub"].Tm.empty())) 
+            if ((!spectrum_container["sub"].Tm.empty()) && (!spectrum_container["sam_sub"].Tm.empty())) 
             {
-                c_t_dataset.Tm_sam_sub = get_complex_transmission(spectrum_container["sam_sub"], spectrum_container["ref"]);
+                c_t_dataset.Tm_sam_sub = get_complex_transmission(spectrum_container["sam_sub"], spectrum_container["sub"]);
                 // std::cout << "Tm2 calculated: " << Tm2[1] << std::endl;
                 auto abs_Tm2 = torch::abs(c_t_dataset.Tm_sam_sub).to(torch::kFloat);
                 c_t_dataset.Tm_sam_sub_abs.resize(abs_Tm2.size(0));
