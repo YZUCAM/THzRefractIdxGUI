@@ -373,6 +373,8 @@ void clear_data()
 // for mode 1
 void prepare_network_prams()
 {
+    std::cout << "enter prepare_network_prams function" << std::endl;
+
     int size = 0;
     // torch::Tensor phase_measured;
     if (ROI_data.roi_Tm_sam.numel() != 0)
@@ -491,6 +493,9 @@ train_step(
 // Extraction button call back function (basic case known thickness single layer freestanding)
 void extraction_freestanding(std::string lr, std::string max_ep, std::string from, std::string to)
 {   
+
+    std::cout << "enter extraction_freeestanding function" << std::endl;
+
     if (cal_param.L.numel() == 0)
     {
         logger.Log(DataLogger::ERROR, "Model Parameters are empty, please set parameters.");
@@ -512,6 +517,10 @@ void extraction_freestanding(std::string lr, std::string max_ep, std::string fro
     set_ROI_dataset(from, to);
     get_phase(from, to);
     prepare_network_prams();
+
+    std::cout << ROI_data.roi_Tm_sam.size(0) << std::endl;
+    std::cout << phase_info.roi_measured_phase1.size(0) << std::endl;
+    std::cout << ROI_data.roi_w.size(0) << std::endl;
 
     ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm_sam, phase_info.roi_measured_phase1, ROI_data.roi_w, know_FP);
     torch::optim::Adam optimizer(

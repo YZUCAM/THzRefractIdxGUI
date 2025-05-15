@@ -71,7 +71,7 @@ void drawFileDialogGui()
                 ref_selected = true;
                 message = "Load reference success.";
                 logger.Log(DataLogger::INFO, message);
-                construct_w(spectrum_container["sam"]);
+                construct_w(spectrum_container["ref"]);
                 message = "Obtain angular frequency success.";
                 logger.Log(DataLogger::INFO, message);
             } 
@@ -162,5 +162,50 @@ void CircleIndicator(bool status, const char* label)
     {
         ImGui::SameLine();
         ImGui::TextUnformatted(label);
+    }
+}
+
+
+void SaveToFile(const std::string& filename, const complex_refractive_index& data, const roi_dataset& data2) 
+{
+    // format data
+
+    // std::ofstream file(filename);
+    // if (file.is_open()) {
+    //     file << data;
+    //     file.close();
+    //     std::cout << "Saved to " << filename << std::endl;
+    // } else {
+    //     std::cerr << "Failed to open or create file: " << filename << std::endl;
+    // }
+
+    size_t size = data2.roi_freqsTHz.size();
+
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Error: Unable to open file: " << filename << std::endl;
+        return;
+    }
+
+    // Optional: write header
+    file << "FreqsTHz,n,k\n";
+
+    for (size_t i = 0; i < size; ++i) {
+        file << data2.roi_freqsTHz[i] << "," << data.n2[i] << "," << data.k2[i] << "\n";
+    }
+
+    file.close();
+    std::cout << "Saved to " << filename << std::endl;
+}
+
+void ShowSaveDialog() 
+{
+    if (ImGuiFileDialog::Instance()->Display("SaveFileDlg", ImGuiWindowFlags_NoCollapse,ImVec2(700, 400)))
+    {
+        if (ImGuiFileDialog::Instance()->IsOk()) {
+            std::string path = ImGuiFileDialog::Instance()->GetFilePathName();
+            SaveToFile(path, cri, ROI_data);
+        }
+        ImGuiFileDialog::Instance()->Close();
     }
 }

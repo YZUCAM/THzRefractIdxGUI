@@ -3,10 +3,11 @@
 //                                                 23-Apr-2025
 
 // third version change backend function
-// TODO add FP mode selection button (check box)
-// second plot set as amplitude fitting data
-// fourth plot set as phase fitting data.
-// use only simple model with known thickness.
+// TODO 
+// when clear all data and reload data, when clicked extraction, crashed
+// phase_info.roi_measured_phase1.size(0) is zero caused crash.
+
+// Sample global phase gives wrong value.
 
 
 #include "imgui.h"
@@ -287,7 +288,7 @@ int main(int, char**)
             // ImPlot::SetupAxis(ImAxis_X1, "Frequency (Hz)", ImPlotAxisFlags_AutoFit);
             // ImPlot::SetupAxis(ImAxis_Y1, "n", ImPlotAxisFlags_AutoFit);
             // ImPlot::SetupAxis(ImAxis_Y2, "k", ImPlotAxisFlags_AuxDefault | ImPlotAxisFlags_AutoFit);
-            ImPlot::SetupAxis(ImAxis_X1, "Frequency (Hz)");
+            ImPlot::SetupAxis(ImAxis_X1, "Frequency (THz)");
             ImPlot::SetupAxis(ImAxis_Y1, "n");
             ImPlot::SetupAxis(ImAxis_Y2, "k", ImPlotAxisFlags_AuxDefault);
 
@@ -314,7 +315,7 @@ int main(int, char**)
         if (first_load_plot){ImPlot::SetNextAxesToFit();}
         if (ImPlot::BeginPlot("Transmission Phase", plot4_size)) 
         {
-            ImPlot::SetupAxes("Frequency (Hz)", "Phase (rad)");
+            ImPlot::SetupAxes("Frequency (THz)", "Phase (rad)");
             ImPlot::SetupLegend(ImPlotLocation_NorthEast);
             // ImPlot::SetupAxisScale(ImAxis_Y1, ImPlotScale_Log10);
             if (roi_selector)
@@ -446,8 +447,9 @@ int main(int, char**)
             }
 
         // DEVELOP WILL BE REMOVED LATER
-        ImVec2 button_size_default = ImGui::GetItemRectSize();
+        // ImVec2 button_size_default = ImGui::GetItemRectSize();
         drawFileDialogGui();
+
         //indicator
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 125, 60));
         ImGui::BeginGroup();
@@ -467,12 +469,15 @@ int main(int, char**)
         // save button
         if (ImGui::Button(" Save Data "))
         {
-            //save data
-            // get_phase(c_t_dataset, std::string(ROI_from), std::string(ROI_to), check_phase);
-            // test_phase = true;
-        }
-        ImGui::EndGroup();
 
+            IGFD::FileDialogConfig config2;
+            config2.path = ".";
+
+            ImGuiFileDialog::Instance()->OpenDialog("SaveFileDlg", "Save File", ".csv,.txt", config2);
+        
+        }
+        ShowSaveDialog();
+        ImGui::EndGroup();
 
 
         // Thickness Parameters Setting Section
@@ -631,6 +636,10 @@ int main(int, char**)
             isTraining = true;
             if (mode == 0)
             {
+                std::cout << ROI_data.roi_Tm_sam.size(0) << std::endl;
+                std::cout << phase_info.roi_measured_phase1.size(0) << std::endl;
+                std::cout << ROI_data.roi_w.size(0) << std::endl;
+
                 //initial model parameters to avoid crash
                 prepare_network_prams();
                 if (trainingThread.joinable()){
@@ -716,7 +725,7 @@ int main(int, char**)
         ImGui::SetCursorPos(ImVec2(10, right_window_size.y - 28));
         ImGui::Text("App FPS: %.1f", io.Framerate);
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 200, right_window_size.y - 28));
-        ImGui::Text("By Dr. Yi  V: 0.2.2");
+        ImGui::Text("By Dr. Yi  V: 0.2.3");
         ImGui::End();
 
 
