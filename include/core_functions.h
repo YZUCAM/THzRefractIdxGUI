@@ -22,7 +22,7 @@ std::pair<torch::Tensor, torch::Tensor> tensor_cal_FP(const torch::Tensor& n1, c
 
 std::pair<torch::Tensor, torch::Tensor> tensor_cal_transmission_phase(const torch::Tensor& n1, const torch::Tensor& k1,
     const torch::Tensor& n2, const torch::Tensor& k2, const torch::Tensor& n3, const torch::Tensor& k3, const torch::Tensor& w, 
-    const torch::Tensor& L, bool FP);
+    const torch::Tensor& L, bool onsub, bool FP);
 
 torch::Tensor tensor_cal_euclidean_dist(const torch::Tensor& t_cal, const torch::Tensor& t_m, const torch::Tensor& phase_measured, 
     const torch::Tensor& phase_compen, const torch::Tensor& w, const torch::Tensor& L, const torch::Tensor& n2, const torch::Tensor& n1);
@@ -36,7 +36,7 @@ class ExtractIndexNetwork : public torch::nn::Module
 {
     public:
         // Constructor, needs to initialize tensors and parameters
-        ExtractIndexNetwork(cal_parameters& prams, torch::Tensor& ctd, torch::Tensor& pd, torch::Tensor& w, bool FP);
+        ExtractIndexNetwork(cal_parameters& prams, torch::Tensor& ctd, torch::Tensor& pd, torch::Tensor& w, bool onsub, bool FP);
     
         // Destructor
         ~ExtractIndexNetwork() = default;
@@ -48,7 +48,7 @@ class ExtractIndexNetwork : public torch::nn::Module
         torch::Tensor n1, k1, n2, k2, n3, k3, w;
         torch::Tensor L;  // thickness
         torch::Tensor targetSpectrum, phase_measured;
-        bool n_grad, L_grad, FP;
+        bool n_grad, L_grad, onsub, FP;
 };
     
 // Define shared pointer alias using the TORCH_MODULE macro

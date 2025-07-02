@@ -14,6 +14,7 @@ extern DataLogger logger;
 
 extern bool know_thickness;
 extern bool know_FP;
+extern bool know_FP_sam_sub;
 extern bool ref_selected;
 extern bool chip_selected;
 extern bool sam_selected;

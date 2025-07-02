@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 3.14)
 
-set(CMAKE_TOOLCHAIN_FILE $ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
+#set(CMAKE_TOOLCHAIN_FILE $ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake)
 
 project(mygui VERSION 0.0.1)
 set(CMAKE_CXX_STANDARD 17)
 
 #CMAKE_PREFIX_PATH is cmake used to find libraries
-set(CMAKE_PREFIX_PATH "/home/z/zhuy/Develop/libtorch" ${CMAKE_PREFIX_PATH})
+set(CMAKE_PREFIX_PATH "/opt/libtorch" ${CMAKE_PREFIX_PATH})
 
 # tell CMAKE to find fast-cpp-csv-parser path.
-include_directories($ENV{VCPKG_ROOT}/installed/x64-linux/include/fast-cpp-csv-parser)
+include_directories(/opt/fast-cpp-csv-parser)
 
 
 #find_package
@@ -43,6 +43,7 @@ message(STATUS "--------------debug info---------------------")
 
 
 # Target
+# set(CMAKE_EXE_LINKER_FLAGS "-static")
 add_executable(mygui main.cpp)
 target_sources(mygui PRIVATE 
                ${IMGUI_DIR}/imgui.cpp
@@ -69,6 +70,10 @@ target_include_directories(mygui PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include
 target_link_libraries(mygui PRIVATE glfw OpenGL "${TORCH_LIBRARIES}")
 
 
+# support make install in system wide
+install(TARGETS mygui DESTINATION bin)
+
+
 # debug print message
 # message(STATUS "--------------debug info---------------------")
 # message(STATUS "glfw dir: ")
@@ -79,10 +84,10 @@ target_link_libraries(mygui PRIVATE glfw OpenGL "${TORCH_LIBRARIES}")
 
 
 # Move the executable to the source dir after build
-add_custom_command(TARGET mygui POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E rename
-        $<TARGET_FILE:mygui>
-        ${CMAKE_SOURCE_DIR}/$<TARGET_FILE_NAME:mygui>
-    COMMENT "Moving executable to source directory"
-)
+#add_custom_command(TARGET mygui POST_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E rename
+#        $<TARGET_FILE:mygui>
+#        ${CMAKE_SOURCE_DIR}/$<TARGET_FILE_NAME:mygui>
+#    COMMENT "Moving executable to source directory"
+#)
 

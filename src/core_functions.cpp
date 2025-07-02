@@ -204,7 +204,7 @@ void get_phase(std::string from, std::string to)
     else
     {
         torch::Tensor angle2 = torch::angle(c_t_dataset.Tm_sam_sub.to(torch::kComplexFloat));  // convert it to double!
-        torch::Tensor phase2 = unwrap(angle2) + gpd.gpd_sam_sub;
+        torch::Tensor phase2 = unwrap(angle2) + gpd.gpd_sam_sub;                                // Tm_sam_sub is complex Esam+sub/Esub, so the gpd_sam_sub should be phase delay of sam+sub - sub
         tensor2vector(phase2, phase_info.measured_phase2_display);
 
         if (idx_from >= 0 && idx_to <= phase2.size(0) && idx_from <= idx_to) 
@@ -267,7 +267,7 @@ std::pair<torch::Tensor, torch::Tensor> tensor_cal_transmission_phase(
     const torch::Tensor& n1, const torch::Tensor& k1,
     const torch::Tensor& n2, const torch::Tensor& k2,
     const torch::Tensor& n3, const torch::Tensor& k3,
-    const torch::Tensor& w, torch::Tensor& L,
+    const torch::Tensor& w, torch::Tensor& L, bool onsub,
     bool FP)
 {
     auto j = torch::complex(torch::tensor(0.0), torch::tensor(1.0));
@@ -279,14 +279,31 @@ std::pair<torch::Tensor, torch::Tensor> tensor_cal_transmission_phase(
 
     if (FP)
     {
-        auto [fp_coeff, fp_phase] = tensor_cal_FP(n1, k1, n2, k2, n3, k3, w, L);
-        T_cal = coeff * torch::exp(j * (n2 - n1 + j * (k2 - k1)) * w * L / C) * fp_coeff;
-        phase_by_k = torch::angle(coeff) + fp_phase;
+        if (onsub)
+        {
+            auto [fp_coeff, fp_phase] = tensor_cal_FP(n1, k1, n2, k2, n3, k3, w, L);
+            T_cal = coeff * torch::exp(j * (n2 + j * (k2)) * w * L / C) * fp_coeff;
+            phase_by_k = torch::angle(coeff) + fp_phase;
+        }
+        else
+        {
+            auto [fp_coeff, fp_phase] = tensor_cal_FP(n1, k1, n2, k2, n3, k3, w, L);
+            T_cal = coeff * torch::exp(j * (n2 - n1 + j * (k2 - k1)) * w * L / C) * fp_coeff;
+            phase_by_k = torch::angle(coeff) + fp_phase;
+        }
     }
     else
     {
-        T_cal = coeff * torch::exp(j * (n2 - n1 + j * (k2 - k1)) * w * L / C);
-        phase_by_k = torch::angle(coeff);
+        if (onsub)
+        {
+            T_cal = coeff * torch::exp(j * (n2 + j * (k2)) * w * L / C);
+            phase_by_k = torch::angle(coeff);
+        }
+        else
+        {
+            T_cal = coeff * torch::exp(j * (n2 - n1 + j * (k2 - k1)) * w * L / C);
+            phase_by_k = torch::angle(coeff);
+        }
     }
 
     return std::pair<torch::Tensor, torch::Tensor>(T_cal, phase_by_k);
@@ -373,7 +390,7 @@ void clear_data()
 // for mode 1
 void prepare_network_prams()
 {
-    std::cout << "enter prepare_network_prams function" << std::endl;
+    // std::cout << "enter prepare_network_prams function" << std::endl;
 
     int size = 0;
     // torch::Tensor phase_measured;
@@ -400,20 +417,20 @@ void prepare_network_prams()
     cal_param.L_grad = false;
 }
 
-void update_network_prams(cal_parameters& parameters, torch::Tensor& opt_n, torch::Tensor& opt_k, torch::Tensor new_L)
-{
-    parameters.n2 = opt_n;
-    parameters.k2 = opt_k;
-    parameters.L = new_L;
-}
+// void update_network_prams(cal_parameters& parameters, torch::Tensor& opt_n, torch::Tensor& opt_k, torch::Tensor new_L)
+// {
+//     parameters.n2 = opt_n;
+//     parameters.k2 = opt_k;
+//     parameters.L = new_L;
+// }
 
 
 
-ExtractIndexNetwork::ExtractIndexNetwork(cal_parameters& prams, torch::Tensor& ctd, torch::Tensor& pd, torch::Tensor& w, bool FP)
+ExtractIndexNetwork::ExtractIndexNetwork(cal_parameters& prams, torch::Tensor& ctd, torch::Tensor& pd, torch::Tensor& w, bool onsub, bool FP)
     : n1(prams.n1), k1(prams.k1), n2(prams.n2), k2(prams.k2),
       n3(prams.n3), k3(prams.k3), L(prams.L), 
       targetSpectrum(ctd), phase_measured(pd), w(w),
-      n_grad(prams.n_grad), L_grad(prams.L_grad), FP(FP) {
+      n_grad(prams.n_grad), L_grad(prams.L_grad), onsub(onsub), FP(FP) {
     // Constructor body can be left empty as initialization happens in the initializer list
     this->n2 = register_parameter("n2", n2, n_grad);
     this->k2 = register_parameter("k2", k2, n_grad);
@@ -422,7 +439,7 @@ ExtractIndexNetwork::ExtractIndexNetwork(cal_parameters& prams, torch::Tensor& c
 
 torch::Tensor ExtractIndexNetwork::forward() 
 {
-    auto [T_cal_ROI, phase_extra_ROI] = tensor_cal_transmission_phase(n1, k1, n2, k2, n3, k3, w, L, FP);
+    auto [T_cal_ROI, phase_extra_ROI] = tensor_cal_transmission_phase(n1, k1, n2, k2, n3, k3, w, L, onsub, FP);
 
     auto dist1 = tensor_cal_euclidean_dist(
         T_cal_ROI, targetSpectrum, phase_measured, phase_extra_ROI, w, L, n2, n1);
@@ -494,7 +511,7 @@ train_step(
 void extraction_freestanding(std::string lr, std::string max_ep, std::string from, std::string to)
 {   
 
-    std::cout << "enter extraction_freeestanding function" << std::endl;
+    // std::cout << "enter extraction_freeestanding function" << std::endl;
 
     if (cal_param.L.numel() == 0)
     {
@@ -518,11 +535,11 @@ void extraction_freestanding(std::string lr, std::string max_ep, std::string fro
     get_phase(from, to);
     prepare_network_prams();
 
-    std::cout << ROI_data.roi_Tm_sam.size(0) << std::endl;
-    std::cout << phase_info.roi_measured_phase1.size(0) << std::endl;
-    std::cout << ROI_data.roi_w.size(0) << std::endl;
+    // std::cout << ROI_data.roi_Tm_sam.size(0) << std::endl;
+    // std::cout << phase_info.roi_measured_phase1.size(0) << std::endl;
+    // std::cout << ROI_data.roi_w.size(0) << std::endl;
 
-    ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm_sam, phase_info.roi_measured_phase1, ROI_data.roi_w, know_FP);
+    ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm_sam, phase_info.roi_measured_phase1, ROI_data.roi_w, false, know_FP);
     torch::optim::Adam optimizer(
         { extraction_model.n2, extraction_model.k2 }, torch::optim::AdamOptions(lr_)
     );
@@ -537,7 +554,7 @@ void extraction_freestanding(std::string lr, std::string max_ep, std::string fro
     tensor2vector(optimal_k2, cri.k2);
 
     // generate simulation curve
-    auto [T_cal, phase_extra_ROI] = tensor_cal_transmission_phase(cal_param.n1, cal_param.k1, optimal_n2, optimal_k2, cal_param.n3, cal_param.k3, ROI_data.roi_w, cal_param.L, know_FP);
+    auto [T_cal, phase_extra_ROI] = tensor_cal_transmission_phase(cal_param.n1, cal_param.k1, optimal_n2, optimal_k2, cal_param.n3, cal_param.k3, ROI_data.roi_w, cal_param.L, false, know_FP);
     auto abs_T_cal = torch::abs(T_cal).to(torch::kFloat);
     auto cal_phase = phase_extra_ROI + ((optimal_n2 - cal_param.n1) * ROI_data.roi_w * cal_param.L / C);
     
@@ -588,7 +605,7 @@ void extraction_onsubstrate(std::string lr, std::string max_ep, std::string from
     }
     cal_param.L = ROI_data.L2;  //set susbtrate thickness
 
-    ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm_sub, phase_info.roi_measured_phase0, ROI_data.roi_w, know_FP);
+    ExtractIndexNetwork extraction_model(cal_param, ROI_data.roi_Tm_sub, phase_info.roi_measured_phase0, ROI_data.roi_w, false, know_FP);
     torch::optim::Adam optimizer(
         { extraction_model.n2, extraction_model.k2 }, torch::optim::AdamOptions(lr_)
     );
@@ -599,7 +616,7 @@ void extraction_onsubstrate(std::string lr, std::string max_ep, std::string from
     logger.Log("=============");
 
     // generate simulation curve
-    auto [T_cal0, phase_extra_ROI0] = tensor_cal_transmission_phase(cal_param.n1, cal_param.k1, ret.second[0], ret.second[1], cal_param.n3, cal_param.k3, ROI_data.roi_w, cal_param.L, know_FP);
+    auto [T_cal0, phase_extra_ROI0] = tensor_cal_transmission_phase(cal_param.n1, cal_param.k1, ret.second[0], ret.second[1], cal_param.n3, cal_param.k3, ROI_data.roi_w, cal_param.L, false, know_FP);
     auto abs_T_cal0 = torch::abs(T_cal0).to(torch::kFloat);
     auto cal_phase0 = phase_extra_ROI0 + ((ret.second[0] - cal_param.n1) * ROI_data.roi_w * cal_param.L / C);
     
@@ -614,7 +631,7 @@ void extraction_onsubstrate(std::string lr, std::string max_ep, std::string from
     cal_param.k3 = ret.second[1];
     cal_param.L = ROI_data.L;
 
-    ExtractIndexNetwork extraction_model2(cal_param, ROI_data.roi_Tm_sam_sub, phase_info.roi_measured_phase2, ROI_data.roi_w, know_FP);
+    ExtractIndexNetwork extraction_model2(cal_param, ROI_data.roi_Tm_sam_sub, phase_info.roi_measured_phase2, ROI_data.roi_w, true, know_FP_sam_sub);
     torch::optim::Adam optimizer2(
         { extraction_model2.n2, extraction_model2.k2 }, torch::optim::AdamOptions(lr_)
     );
@@ -630,9 +647,10 @@ void extraction_onsubstrate(std::string lr, std::string max_ep, std::string from
     tensor2vector(optimal_k2, cri.k2);
 
     // generate simulation curve
-    auto [T_cal, phase_extra_ROI] = tensor_cal_transmission_phase(cal_param.n1, cal_param.k1, optimal_n2, optimal_k2, cal_param.n3, cal_param.k3, ROI_data.roi_w, cal_param.L, know_FP);
+    auto [T_cal, phase_extra_ROI] = tensor_cal_transmission_phase(cal_param.n1, cal_param.k1, optimal_n2, optimal_k2, cal_param.n3, cal_param.k3, ROI_data.roi_w, cal_param.L, true, know_FP_sam_sub);
     auto abs_T_cal = torch::abs(T_cal).to(torch::kFloat);
-    auto cal_phase = phase_extra_ROI + ((optimal_n2 - cal_param.n1) * ROI_data.roi_w * cal_param.L / C);
+    auto cal_phase = phase_extra_ROI + ((optimal_n2) * ROI_data.roi_w * cal_param.L / C);
+    // auto cal_phase = phase_extra_ROI + ((optimal_n2 - cal_param.n1) * ROI_data.roi_w * cal_param.L / C);
     
     // need check sam or sub or sam_sub
     tensor2vector(abs_T_cal, cal_results.T_cal_sam_sub);

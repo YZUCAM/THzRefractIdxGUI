@@ -50,6 +50,7 @@ bool sam_sub_selected = false;
 bool first_load_plot = false;
 bool roi_selector = false;
 bool know_FP = false;
+bool know_FP_sam_sub = false;
 
 std::string selected_file_type = "";
 std::string point = "";
@@ -385,8 +386,8 @@ int main(int, char**)
         else
         {
             ImGui::Text("Mode 2:");
-            ImGui::Text("Under test sample on the");
-            ImGui::Text("substrate.");
+            ImGui::Text("Sample on the substrate.");
+            // ImGui::Text("substrate.");
             ImGui::Text("Required: ");
             ImGui::Text( "1. Reference trace.");
             ImGui::Text( "2. Substrate trace.");
@@ -397,8 +398,10 @@ int main(int, char**)
 
 
         // check box for know and unknow thickness
+        ImGui::SetCursorPos(ImVec2(10, 170));
+        ImGui::Checkbox("Fabry-Pérot Effect Sub", &know_FP);
         ImGui::SetCursorPos(ImVec2(10, 200));
-        ImGui::Checkbox("Fabry-Pérot Effect", &know_FP);
+        ImGui::Checkbox("Fabry-Pérot Effect Sam", &know_FP_sam_sub);
 
         // Select File Section
         ImGui::SetCursorPos(ImVec2(right_window_size.x - 125, 30));

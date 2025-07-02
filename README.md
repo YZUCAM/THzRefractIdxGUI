@@ -52,3 +52,7 @@ Those time delays are easily identified in the time domain spectrum. They are ju
 - Sample: the time difference between sample trace and blank reference trace (used in mode 1).
 - Sample+Sub: the time difference between sample on the substrate and the substrate trace (used in mode 2)
 
+
+### Update
+update the complex transmission function for mode2 02-July-2025
+
